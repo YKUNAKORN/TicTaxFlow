@@ -229,6 +229,11 @@ __marimo__/
 # Uploaded receipts - Contains PII (Personal Identifiable Information)
 data/uploads/
 **/uploads/
+data/receipts/
+**/receipts/*.jpg
+**/receipts/*.png
+**/receipts/*.jpeg
+**/receipts/*.webp
 data/test_receipts/*.jpg
 data/test_receipts/*.png
 data/test_receipts/*.jpeg
