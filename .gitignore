@@ -207,3 +207,63 @@ marimo/_lsp/
 __marimo__/
 
 .DS_Store
+
+# ============================================================
+# TicTaxFlow Project Specific - SENSITIVE DATA
+# ============================================================
+
+# Database files - Contains user transaction data
+# *.db
+# *.sqlite
+# *.sqlite3
+# data/*.db
+# data/*.sqlite
+# data/*.sqlite3
+
+# # ChromaDB Vector Store - Large embedding files
+# data/embeddings/
+# **/embeddings/
+# *.chroma
+# chroma.sqlite3
+
+# Uploaded receipts - Contains PII (Personal Identifiable Information)
+data/uploads/
+**/uploads/
+data/test_receipts/*.jpg
+data/test_receipts/*.png
+data/test_receipts/*.jpeg
+
+# PDF documents - May contain proprietary content
+data/documents/*.pdf
+data/documents/**/*.pdf
+
+# Test files
+data/test*.db
+data/test_*
+**/test_*.db
+
+# API keys and secrets (additional protection)
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets.json
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Large model files
+*.model
+*.h5
+*.pkl
+*.pickle
+
+# Logs with potential sensitive data
+logs/
+*.log
+**/*.log
+
+.vscode

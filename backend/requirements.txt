@@ -1,5 +1,9 @@
 bcrypt
 fastapi
 numpy
-dotenv
+python-dotenv
 google-genai
+google-generativeai
+chromadb
+pypdf
+langgraph
