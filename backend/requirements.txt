@@ -9,4 +9,6 @@ pypdf
 langgraph
 supabase
 uvicorn
-pydantic[email]
+pydantic
+email-validator
+python-multipart

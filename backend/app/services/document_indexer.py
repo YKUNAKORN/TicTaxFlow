@@ -1,20 +1,21 @@
+"""Document indexing service for building vector database."""
 import os
-from dotenv import load_dotenv
 import chromadb
 from pypdf import PdfReader
 
-load_dotenv()
-
-# Initialize ChromaDB client with default embedding function
-chroma_client = chromadb.PersistentClient(path="../data/embeddings")
-collection_name = "document_collection"
-collection = chroma_client.get_or_create_collection(
-    name=collection_name
-)
+from app.core.config import settings
 
 
-def load_pdf_documents(directory_path):
+chroma_client = chromadb.PersistentClient(path=str(settings.EMBEDDINGS_DIR))
+collection_name = settings.CHROMA_COLLECTION_NAME
+collection = chroma_client.get_or_create_collection(name=collection_name)
+
+
+def load_pdf_documents(directory_path=None):
     """Load all PDF documents from the specified directory."""
+    if directory_path is None:
+        directory_path = settings.DOCUMENTS_DIR
+    
     documents = []
     
     if not os.path.exists(directory_path):
@@ -51,8 +52,13 @@ def load_pdf_documents(directory_path):
     return documents
 
 
-def chunk_text(text, chunk_size=1000, chunk_overlap=200):
+def chunk_text(text, chunk_size=None, chunk_overlap=None):
     """Split text into overlapping chunks."""
+    if chunk_size is None:
+        chunk_size = settings.CHUNK_SIZE
+    if chunk_overlap is None:
+        chunk_overlap = settings.CHUNK_OVERLAP
+        
     chunks = []
     start = 0
     text_length = len(text)
@@ -95,7 +101,6 @@ def index_documents(documents, batch_size=100):
     
     print(f"Created {len(all_chunks)} chunks")
     
-    # Process in batches to avoid memory issues
     total_batches = (len(all_chunks) + batch_size - 1) // batch_size
     
     for batch_idx in range(0, len(all_chunks), batch_size):
@@ -119,19 +124,15 @@ def index_documents(documents, batch_size=100):
 
 def main():
     """Main function to run the document indexing process."""
-    documents_dir = "../data/documents"
-    
     print("Starting document indexing process...")
     print("=" * 50)
     
-    # Load documents
-    documents = load_pdf_documents(documents_dir)
+    documents = load_pdf_documents()
     
     if not documents:
         print("No documents loaded. Exiting.")
         return
     
-    # Index documents
     index_documents(documents)
     
     print("=" * 50)

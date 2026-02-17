@@ -1,13 +1,11 @@
-import os
+"""Workflow orchestration for the tax assistant multi-agent system."""
 from typing import TypedDict, Annotated
-from dotenv import load_dotenv
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 
-from inspector_agent import extract_receipt_json
-from tax_expert_agent import ask_tax_expert
-
-load_dotenv()
+from app.agents.inspector import extract_receipt_json
+from app.agents.tax_expert import ask_tax_expert
+from app.agents.accountant import save_receipt_from_inspector
 
 
 class AgentState(TypedDict):
@@ -17,6 +15,8 @@ class AgentState(TypedDict):
     receipt_data: dict
     tax_advice: str
     needs_human_input: bool
+    accountant_result: dict
+    user_id: str
     messages: Annotated[list, add_messages]
 
 
@@ -49,7 +49,6 @@ def validate_receipt_data(state: AgentState) -> str:
     """Check if receipt data is complete."""
     receipt_data = state.get("receipt_data", {})
     
-    # Check if all required fields exist and are not null or error
     date = receipt_data.get("date")
     amount = receipt_data.get("amount")
     tax_id = receipt_data.get("tax_id")
@@ -61,8 +60,8 @@ def validate_receipt_data(state: AgentState) -> str:
         return "human_input"
     
     if date and amount and tax_id:
-        print("Validation: Data complete → Proceed to Tax Expert")
-        return "tax_expert"
+        print("Validation: Data complete → Proceed to Accountant")
+        return "accountant"
     else:
         missing_fields = []
         if not date:
@@ -74,6 +73,42 @@ def validate_receipt_data(state: AgentState) -> str:
         
         print(f"Validation: Missing fields: {', '.join(missing_fields)} → Human input needed")
         return "human_input"
+
+
+def accountant_node(state: AgentState) -> AgentState:
+    """Save transaction to database."""
+    print("Node 3: Accountant Agent - Saving transaction to database...")
+    
+    receipt_data = state["receipt_data"]
+    user_id = state.get("user_id", "demo-user-id")
+    
+    result = save_receipt_from_inspector(
+        user_id=user_id,
+        receipt_data=receipt_data,
+        category_name="Health Insurance"
+    )
+    
+    state["accountant_result"] = result
+    
+    if result.get("success"):
+        transaction = result.get("transaction", {})
+        deductible = transaction.get("deductible_amount", 0)
+        print(f"Transaction saved! Deductible amount: {deductible} THB")
+        
+        state["messages"].append({
+            "role": "system",
+            "content": f"Transaction saved successfully. Deductible: {deductible} THB"
+        })
+    else:
+        error_msg = result.get("error", "Unknown error")
+        print(f"Failed to save transaction: {error_msg}")
+        
+        state["messages"].append({
+            "role": "system",
+            "content": f"Error saving transaction: {error_msg}"
+        })
+    
+    return state
 
 
 def human_input_node(state: AgentState) -> AgentState:
@@ -106,16 +141,23 @@ def human_input_node(state: AgentState) -> AgentState:
 
 def tax_expert_node(state: AgentState) -> AgentState:
     """Get tax advice from expert agent."""
-    print("Node 2: Tax Expert Agent - Analyzing question...")
+    print("Node 4: Tax Expert Agent - Analyzing question...")
     
     question = state["question"]
     
-    # Use receipt data if available from Inspector
     if state.get("receipt_data") and state["receipt_data"]:
         receipt_data = state["receipt_data"]
-        enhanced_question = f"{question}\n\nReceipt details: Date: {receipt_data.get('date')}, Amount: {receipt_data.get('amount')}, Tax ID: {receipt_data.get('tax_id')}"
+        accountant_result = state.get("accountant_result", {})
+        
+        deductible = ""
+        if accountant_result.get("success"):
+            transaction = accountant_result.get("transaction", {})
+            deductible_amount = transaction.get("deductible_amount", 0)
+            deductible = f", Deductible: {deductible_amount} THB"
+        
+        enhanced_question = f"{question}\n\nReceipt details: Date: {receipt_data.get('date')}, Amount: {receipt_data.get('amount')}, Tax ID: {receipt_data.get('tax_id')}{deductible}"
         question = enhanced_question
-        print(f"Using receipt data from Inspector Agent")
+        print(f"Using receipt data and transaction info from previous agents")
     
     answer = ask_tax_expert(question)
     
@@ -134,18 +176,17 @@ def build_workflow():
     Flow:
     START → Router (has image?)
          → Inspector → Validator (data complete?)
-                    → Tax Expert (if complete) → END
+                    → Accountant (save to DB) → Tax Expert → END
                     → Human Input (if incomplete) → END
          → Tax Expert (if no image) → END
     """
     workflow = StateGraph(AgentState)
     
-    # Add nodes
     workflow.add_node("inspect", inspect_receipt_node)
+    workflow.add_node("accountant", accountant_node)
     workflow.add_node("human_input", human_input_node)
     workflow.add_node("tax_expert", tax_expert_node)
     
-    # Set conditional entry point (router)
     workflow.set_conditional_entry_point(
         should_inspect_receipt,
         {
@@ -154,42 +195,39 @@ def build_workflow():
         }
     )
     
-    # Add conditional edge from Inspector based on data completeness
     workflow.add_conditional_edges(
         "inspect",
         validate_receipt_data,
         {
-            "tax_expert": "tax_expert",
+            "accountant": "accountant",
             "human_input": "human_input"
         }
     )
     
-    # Connect Tax Expert → END
+    workflow.add_edge("accountant", "tax_expert")
     workflow.add_edge("tax_expert", END)
-    
-    # Connect Human Input → END (wait for user action)
     workflow.add_edge("human_input", END)
     
     return workflow.compile()
 
 
-def run_tax_assistant(question: str, image_path: str = None):
+def run_tax_assistant(question: str, image_path: str = None, user_id: str = "demo-user-id"):
     """Run the tax assistant workflow."""
     print("=" * 60)
     print("TicTaxFlow AI Assistant")
     print("=" * 60)
     
-    # Initialize state
     initial_state = {
         "question": question,
         "image_path": image_path,
         "receipt_data": {},
         "tax_advice": "",
         "needs_human_input": False,
+        "accountant_result": {},
+        "user_id": user_id,
         "messages": [{"role": "user", "content": question}]
     }
     
-    # Build and run workflow
     app = build_workflow()
     result = app.invoke(initial_state)
     
@@ -201,6 +239,19 @@ def run_tax_assistant(question: str, image_path: str = None):
         print(f"\nReceipt Data:")
         for key, value in result["receipt_data"].items():
             print(f"  {key}: {value}")
+    
+    if result.get("accountant_result"):
+        accountant_result = result["accountant_result"]
+        if accountant_result.get("success"):
+            print(f"\nTransaction Saved:")
+            transaction = accountant_result.get("transaction", {})
+            print(f"  ID: {transaction.get('id', 'N/A')}")
+            print(f"  Amount: {transaction.get('total_amount', 0)} THB")
+            print(f"  Deductible: {transaction.get('deductible_amount', 0)} THB")
+            print(f"  Status: {transaction.get('status', 'N/A')}")
+        else:
+            print(f"\nTransaction Error:")
+            print(f"  {accountant_result.get('error', 'Unknown error')}")
     
     if result.get("needs_human_input"):
         print(f"\nStatus: Waiting for user input")
@@ -215,6 +266,9 @@ def run_tax_assistant(question: str, image_path: str = None):
 
 def main():
     """Test the workflow."""
+    import os
+    from app.core.config import settings
+    
     print("LangGraph Workflow - Tax Assistant")
     print("\nExample 1: Question only")
     print("-" * 60)
@@ -224,11 +278,11 @@ def main():
     print("\n\nExample 2: Question with receipt (if available)")
     print("-" * 60)
     
-    test_image = "../data/receipts/sample_receipt.jpg"
-    if os.path.exists(test_image):
+    test_image = settings.RECEIPTS_DIR / "sample_receipt.jpg"
+    if test_image.exists():
         result2 = run_tax_assistant(
             "Can I use this receipt for tax deduction?",
-            image_path=test_image
+            image_path=str(test_image)
         )
     else:
         print("No test receipt found. Place an image at:")
