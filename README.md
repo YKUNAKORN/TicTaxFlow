@@ -43,9 +43,14 @@ TicTaxFlow - AI Agent for Tax Deduction Management System
     npm i
     ```
 3. Run frontend server
-    ```
-    npm run dev -- --port 3001
-    ```
+    - To **start** server
+        ```
+        npm run dev 
+        ```
+    - To **stop** server
+        ```
+        control + C
+        ```
 
 
 #### **Set up the project & Start Backend server**
@@ -80,10 +85,15 @@ TicTaxFlow - AI Agent for Tax Deduction Management System
     pip install -r requirements.txt
     ```
 
-5. Run to test
-    ```
-    python app.py
-    ```
+5. Run backend server
+    - To **start** server
+        ```
+        uvicorn main:app --reload --port 8000
+        ```
+    - To **stop** server
+        ```
+        lsof -ti:8000 | xargs kill -9
+        ```
 
 ### Run in container Docker
 ```

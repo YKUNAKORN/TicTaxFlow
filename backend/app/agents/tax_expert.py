@@ -1,20 +1,21 @@
-import os
-from dotenv import load_dotenv
+"""Tax Expert Agent for providing tax advice using RAG."""
 import chromadb
 from google import genai
 
-load_dotenv()
-
-# Initialize clients
-google_api = os.getenv("GEMINI_API_KEY")
-genai_client = genai.Client(api_key=google_api)
-
-chroma_client = chromadb.PersistentClient(path="../data/embeddings")
-collection = chroma_client.get_or_create_collection(name="document_collection")
+from app.core.config import settings
 
 
-def retrieve_context(question, n_results=5):
+genai_client = genai.Client(api_key=settings.GEMINI_API_KEY)
+
+chroma_client = chromadb.PersistentClient(path=str(settings.EMBEDDINGS_DIR))
+collection = chroma_client.get_or_create_collection(name=settings.CHROMA_COLLECTION_NAME)
+
+
+def retrieve_context(question, n_results=None):
     """Retrieve relevant context from vector database."""
+    if n_results is None:
+        n_results = settings.RAG_N_RESULTS
+        
     try:
         results = collection.query(
             query_texts=[question],
@@ -64,7 +65,6 @@ def ask_tax_expert(question):
     """Ask the tax expert agent a question."""
     print(f"Question: {question}")
     
-    # Retrieve relevant context
     context_chunks = retrieve_context(question)
     
     if not context_chunks:
@@ -72,16 +72,12 @@ def ask_tax_expert(question):
     
     print(f"Found {len(context_chunks)} relevant documents")
     
-    # Combine context
     context = "\n\n".join(context_chunks)
-    
-    # Build prompt
     prompt = build_tax_expert_prompt(question, context)
     
-    # Generate response
     try:
         response = genai_client.models.generate_content(
-            model="models/gemini-2.5-flash",
+            model=f"models/{settings.GEMINI_MODEL}",
             contents=prompt
         )
         
