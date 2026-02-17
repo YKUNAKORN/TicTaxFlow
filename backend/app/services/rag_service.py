@@ -1,21 +1,22 @@
-import os
-from dotenv import load_dotenv
+"""RAG (Retrieval-Augmented Generation) service for querying documents."""
 import chromadb
 from google import genai
 
-load_dotenv()
+from app.core.config import settings
 
-# Initialize API and clients
-google_api = os.getenv("GEMINI_API_KEY")
-genai_client = genai.Client(api_key=google_api)
 
-chroma_client = chromadb.PersistentClient(path="../data/embeddings")
-collection_name = "document_collection"
+genai_client = genai.Client(api_key=settings.GEMINI_API_KEY)
+
+chroma_client = chromadb.PersistentClient(path=str(settings.EMBEDDINGS_DIR))
+collection_name = settings.CHROMA_COLLECTION_NAME
 collection = chroma_client.get_or_create_collection(name=collection_name)
 
 
-def query_documents(question, n_results=5):
+def query_documents(question, n_results=None):
     """Query the vector database for relevant document chunks."""
+    if n_results is None:
+        n_results = settings.RAG_N_RESULTS
+        
     try:
         results = collection.query(
             query_texts=[question],
@@ -51,7 +52,7 @@ def generate_response(question, relevant_chunks):
     
     try:
         response = genai_client.models.generate_content(
-            model="models/gemini-2.5-flash",
+            model=f"models/{settings.GEMINI_MODEL}",
             contents=prompt
         )
         

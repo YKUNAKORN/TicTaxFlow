@@ -272,3 +272,7 @@ logs/
 **/*.log
 
 .vscode
+
+# spacific files
+API_ENDPOINTS.md
+remove_password_column.sql

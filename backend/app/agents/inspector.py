@@ -1,15 +1,14 @@
+"""Inspector Agent for receipt and document analysis."""
 import os
 import json
 from pathlib import Path
-from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
-load_dotenv()
+from app.core.config import settings
 
-# Initialize Gemini client
-google_api = os.getenv("GEMINI_API_KEY")
-genai_client = genai.Client(api_key=google_api)
+
+genai_client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
 
 def load_image(image_path):
@@ -22,15 +21,8 @@ def load_image(image_path):
         return None
 
 
-def extract_receipt_json(image_path):
-    """Extract receipt data as JSON structure."""
-    print(f"Extracting data from: {image_path}")
-    
-    image_data = load_image(image_path)
-    
-    if image_data is None:
-        return {"error": "Failed to load image"}
-    
+def extract_receipt_from_bytes(image_data: bytes):
+    """Extract receipt data from image bytes (supports base64)."""
     prompt = """Analyze this receipt or e-Tax invoice image and extract the following information.
 Return ONLY a valid JSON object with these exact fields:
 
@@ -50,7 +42,7 @@ JSON:"""
     
     try:
         response = genai_client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=settings.GEMINI_MODEL,
             contents=[
                 types.Part.from_bytes(
                     data=image_data,
@@ -85,6 +77,18 @@ JSON:"""
         return {"error": str(e)}
 
 
+def extract_receipt_json(image_path):
+    """Extract receipt data as JSON structure from file path."""
+    print(f"Extracting data from: {image_path}")
+    
+    image_data = load_image(image_path)
+    
+    if image_data is None:
+        return {"error": "Failed to load image"}
+    
+    return extract_receipt_from_bytes(image_data)
+
+
 def build_inspector_prompt():
     """Build prompt for receipt/document inspection."""
     prompt = """You are a Tax Document Inspector for Thai tax system.
@@ -112,19 +116,16 @@ def inspect_document(image_path, custom_prompt=None):
     """Inspect a document/receipt image using Gemini Vision."""
     print(f"Inspecting: {image_path}")
     
-    # Load image
     image_data = load_image(image_path)
     
     if image_data is None:
         return "Failed to load image."
     
-    # Use custom prompt or default
     prompt = custom_prompt if custom_prompt else build_inspector_prompt()
     
-    # Prepare content with image
     try:
         response = genai_client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=settings.GEMINI_MODEL,
             contents=[
                 types.Part.from_bytes(
                     data=image_data,
@@ -149,9 +150,7 @@ def inspect_receipt_batch(image_folder):
         print(f"Folder not found: {image_folder}")
         return []
     
-    # Supported image formats
     image_extensions = [".jpg", ".jpeg", ".png", ".webp"]
-    
     results = []
     
     for image_file in folder_path.iterdir():
@@ -181,7 +180,7 @@ If amount is not clear, return "Amount not found"."""
     
     try:
         response = genai_client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=settings.GEMINI_MODEL,
             contents=[
                 types.Part.from_bytes(
                     data=image_data,
@@ -206,9 +205,7 @@ def extract_receipts_batch_json(image_folder):
         print(f"Folder not found: {image_folder}")
         return []
     
-    # Supported image formats
     image_extensions = [".jpg", ".jpeg", ".png", ".webp"]
-    
     results = []
     
     for image_file in folder_path.iterdir():
@@ -227,25 +224,24 @@ def main():
     print("Tax Document Inspector Agent")
     print("=" * 60)
     
-    # Example usage
-    test_image = "../data/receipts/sample_receipt.jpg"
+    test_image = settings.RECEIPTS_DIR / "sample_receipt.jpg"
     
-    if os.path.exists(test_image):
+    if test_image.exists():
         print(f"\n1. JSON Extraction:")
         print(f"   File: {test_image}")
-        json_result = extract_receipt_json(test_image)
+        json_result = extract_receipt_json(str(test_image))
         print(f"   Result: {json.dumps(json_result, indent=2, ensure_ascii=False)}")
         print("-" * 60)
         
         print(f"\n2. Full Analysis:")
-        result = inspect_document(test_image)
+        result = inspect_document(str(test_image))
         print(f"   Result:\n{result}")
         print("-" * 60)
     else:
         print(f"\nNo test image found at: {test_image}")
         print("Place receipt images in backend/data/receipts/ to test")
         print("\nExample usage:")
-        print("  from inspector_agent import extract_receipt_json")
+        print("  from app.agents.inspector import extract_receipt_json")
         print('  data = extract_receipt_json("receipt.jpg")')
         print('  print(data["date"], data["amount"], data["tax_id"])')
     

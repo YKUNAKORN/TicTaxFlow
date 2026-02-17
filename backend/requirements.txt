@@ -7,3 +7,8 @@ google-generativeai
 chromadb
 pypdf
 langgraph
+supabase
+uvicorn
+pydantic
+email-validator
+python-multipart
