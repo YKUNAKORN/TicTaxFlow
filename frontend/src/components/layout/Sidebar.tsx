@@ -1,5 +1,5 @@
 import React, { ReactNode } from 'react';
-import { LayoutDashboard, Receipt, BookOpen, LogOut, X } from 'lucide-react';
+import { LayoutDashboard, Receipt, BookOpen, LogOut, X, Bot } from 'lucide-react';
 import { clsx } from 'clsx';
 import { NavLink } from 'react-router-dom';
 
@@ -14,6 +14,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     const navItems = [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
         { icon: Receipt, label: 'Transactions', path: '/transactions' },
+        { icon: Bot, label: 'AI Agent', path: '/agent' },
         { icon: BookOpen, label: 'Tax Rules (AI Docs)', path: '/tax-rules' },
     ];
 
