@@ -1,10 +1,49 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Mail, Lock, User, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Mail, Lock, User, ArrowRight, AlertCircle, CheckCircle } from 'lucide-react';
 
 import logo from '../assets/logo-icon.png';
+import { authApi } from '../api/auth';
+import { ApiError } from '../api/client';
 
 const SignUpPage: React.FC = () => {
+    const navigate = useNavigate();
+    const [fullName, setFullName] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setSuccess('');
+        setIsLoading(true);
+
+        try {
+            const response = await authApi.register({
+                full_name: fullName,
+                email,
+                password,
+            });
+
+            setSuccess(response.message);
+            
+            setTimeout(() => {
+                navigate('/signin');
+            }, 2000);
+        } catch (err) {
+            if (err instanceof ApiError) {
+                setError(err.message);
+            } else {
+                setError('An unexpected error occurred');
+            }
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
             <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden">
@@ -15,7 +54,21 @@ const SignUpPage: React.FC = () => {
                         <p className="text-slate-500 mt-2">Join TicTaxFlow and simplify your taxes</p>
                     </div>
 
-                    <form className="space-y-6">
+                    {error && (
+                        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-800">
+                            <AlertCircle className="h-5 w-5 flex-shrink-0" />
+                            <span className="text-sm">{error}</span>
+                        </div>
+                    )}
+
+                    {success && (
+                        <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-800">
+                            <CheckCircle className="h-5 w-5 flex-shrink-0" />
+                            <span className="text-sm">{success}</span>
+                        </div>
+                    )}
+
+                    <form className="space-y-6" onSubmit={handleSubmit}>
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-2">Full Name</label>
                             <div className="relative">
@@ -24,7 +77,11 @@ const SignUpPage: React.FC = () => {
                                 </div>
                                 <input
                                     type="text"
-                                    className="block w-full pl-10 pr-3 py-3 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-slate-50 hover:bg-white"
+                                    value={fullName}
+                                    onChange={(e) => setFullName(e.target.value)}
+                                    required
+                                    disabled={isLoading}
+                                    className="block w-full pl-10 pr-3 py-3 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-slate-50 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                                     placeholder="John Doe"
                                 />
                             </div>
@@ -38,7 +95,11 @@ const SignUpPage: React.FC = () => {
                                 </div>
                                 <input
                                     type="email"
-                                    className="block w-full pl-10 pr-3 py-3 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-slate-50 hover:bg-white"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    required
+                                    disabled={isLoading}
+                                    className="block w-full pl-10 pr-3 py-3 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-slate-50 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                                     placeholder="you@example.com"
                                 />
                             </div>
@@ -52,7 +113,12 @@ const SignUpPage: React.FC = () => {
                                 </div>
                                 <input
                                     type="password"
-                                    className="block w-full pl-10 pr-3 py-3 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-slate-50 hover:bg-white"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                    minLength={8}
+                                    disabled={isLoading}
+                                    className="block w-full pl-10 pr-3 py-3 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-slate-50 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                                     placeholder="Create a password"
                                 />
                             </div>
@@ -61,9 +127,10 @@ const SignUpPage: React.FC = () => {
 
                         <button
                             type="submit"
-                            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-primary-600 text-white font-semibold rounded-xl hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all shadow-lg hover:shadow-primary-500/25"
+                            disabled={isLoading}
+                            className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-primary-600 text-white font-semibold rounded-xl hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all shadow-lg hover:shadow-primary-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Create Account <ArrowRight size={18} />
+                            {isLoading ? 'Creating Account...' : 'Create Account'} <ArrowRight size={18} />
                         </button>
                     </form>
 
@@ -71,7 +138,7 @@ const SignUpPage: React.FC = () => {
                         <p className="text-slate-600">
                             Already have an account?{' '}
                             <Link to="/signin" className="font-semibold text-primary-600 hover:text-primary-500 transition-colors">
-                                Sign in
+                                Login
                             </Link>
                         </p>
                     </div>
