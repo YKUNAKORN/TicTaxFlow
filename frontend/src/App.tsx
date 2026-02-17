@@ -7,6 +7,7 @@ import TaxRulesPage from './pages/TaxRulesPage';
 import SignInPage from './pages/SignInPage';
 import SignUpPage from './pages/SignUpPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import AgentPage from './pages/AgentPage';
 
 function App() {
     return (
@@ -34,6 +35,12 @@ function App() {
                 <Route path="/tax-rules" element={
                     <Layout>
                         <TaxRulesPage />
+                    </Layout>
+                } />
+
+                <Route path="/agent" element={
+                    <Layout>
+                        <AgentPage />
                     </Layout>
                 } />
 
