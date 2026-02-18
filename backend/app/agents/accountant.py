@@ -16,7 +16,7 @@ def get_tax_rule_by_category(category_name: str, tax_year: int = None) -> Option
     """Fetch tax rule from database by category name and tax year."""
     if tax_year is None:
         tax_year = settings.DEFAULT_TAX_YEAR
-        
+    
     try:
         response = supabase.table("tax_rules").select("*").eq(
             "category_name", category_name
@@ -24,6 +24,16 @@ def get_tax_rule_by_category(category_name: str, tax_year: int = None) -> Option
         
         if response.data and len(response.data) > 0:
             return response.data[0]
+        
+        # Fallback: try without tax_year if not found
+        response = supabase.table("tax_rules").select("*").eq(
+            "category_name", category_name
+        ).eq("is_active", True).execute()
+        
+        if response.data and len(response.data) > 0:
+            print(f"Warning: Using tax rule without year filter for {category_name}")
+            return response.data[0]
+        
         return None
     except Exception as e:
         print(f"Error fetching tax rule: {str(e)}")
@@ -82,20 +92,27 @@ def insert_transaction(
         Dict containing success status and transaction data or error message
     """
     try:
+        print(f"insert_transaction called: user_id={user_id}, category={category_name}, amount={total_amount}")
+        
         tax_rule = get_tax_rule_by_category(category_name)
         
         if not tax_rule:
+            error_msg = f"Tax rule not found for category: {category_name}"
+            print(f"ERROR: {error_msg}")
             return {
                 "success": False,
-                "error": f"Tax rule not found for category: {category_name}"
+                "error": error_msg
             }
         
         rule_id = tax_rule["id"]
+        print(f"Tax rule found: id={rule_id}, category={category_name}")
         
         calc_result = calculate_deductible_amount(total_amount, category_name)
         deductible_amount = calc_result["amount"]
         is_capped = calc_result["is_capped"]
         max_limit = calc_result["max_limit"]
+        
+        print(f"Calculated deductible: {deductible_amount} THB (capped: {is_capped})")
         
         transaction_data = {
             "user_id": user_id,
@@ -109,6 +126,8 @@ def insert_transaction(
             "status": status
         }
         
+        print(f"Inserting transaction: {transaction_data}")
+        
         response = supabase.table("transactions").insert(transaction_data).execute()
         
         if response.data:
@@ -121,18 +140,24 @@ def insert_transaction(
                 "success": True,
                 "transaction": response.data[0],
                 "message": message,
-                "is_capped": is_capped
+                "is_capped": is_capped,
+                "data": response.data[0]
             }
         else:
+            print("ERROR: Supabase insert returned no data")
             return {
                 "success": False,
-                "error": "Failed to insert transaction"
+                "error": "Failed to insert transaction - no data returned"
             }
             
     except Exception as e:
+        error_msg = f"Error inserting transaction: {str(e)}"
+        print(f"EXCEPTION in insert_transaction: {error_msg}")
+        import traceback
+        traceback.print_exc()
         return {
             "success": False,
-            "error": f"Error inserting transaction: {str(e)}"
+            "error": error_msg
         }
 
 
@@ -230,7 +255,8 @@ def get_user_transactions(user_id: str, status: Optional[str] = None) -> Dict[st
 def save_receipt_from_inspector(
     user_id: str,
     receipt_data: Dict[str, Any],
-    category_name: str = "Health Insurance"
+    category_name: str = "Health Insurance",
+    receipt_image_url: str = None
 ) -> Dict[str, Any]:
     """Save transaction from Inspector Agent output.
     
@@ -238,15 +264,39 @@ def save_receipt_from_inspector(
         user_id: UUID of the user
         receipt_data: Dict containing date, amount, tax_id from Inspector Agent
         category_name: Tax category (default: Health Insurance)
+        receipt_image_url: URL or path to the receipt image
     
     Returns:
         Dict containing success status and transaction data
     """
     try:
         transaction_date = receipt_data.get("date", "")
-        total_amount = float(receipt_data.get("amount", 0))
+        total_amount = receipt_data.get("amount", 0)
         merchant_tax_id = receipt_data.get("tax_id", "")
         merchant_name = receipt_data.get("merchant_name", "Unknown Merchant")
+        
+        # Validate required fields
+        if not transaction_date:
+            return {
+                "success": False,
+                "error": "Missing transaction date in receipt data"
+            }
+        
+        if not total_amount or total_amount == 0:
+            return {
+                "success": False,
+                "error": f"Invalid or missing amount in receipt data: {total_amount}"
+            }
+        
+        try:
+            total_amount = float(total_amount)
+        except (ValueError, TypeError) as e:
+            return {
+                "success": False,
+                "error": f"Amount is not a valid number: {total_amount}"
+            }
+        
+        print(f"Saving transaction: merchant={merchant_name}, date={transaction_date}, amount={total_amount}, tax_id={merchant_tax_id}")
         
         result = insert_transaction(
             user_id=user_id,
@@ -255,12 +305,16 @@ def save_receipt_from_inspector(
             transaction_date=transaction_date,
             total_amount=total_amount,
             category_name=category_name,
+            receipt_image_url=receipt_image_url,
             status="verified"
         )
         
         return result
         
     except Exception as e:
+        print(f"Exception in save_receipt_from_inspector: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return {
             "success": False,
             "error": f"Error saving receipt data: {str(e)}"

@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from app.api.v1.router import api_router
 
 app = FastAPI(
@@ -16,6 +18,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files for receipts
+receipts_dir = Path(__file__).parent / "data" / "receipts"
+receipts_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/receipts", StaticFiles(directory=str(receipts_dir)), name="receipts")
 
 # Include API v1 routes
 app.include_router(api_router, prefix="/api/v1")

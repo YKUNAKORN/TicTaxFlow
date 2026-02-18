@@ -40,7 +40,7 @@ const ForgotPasswordPage: React.FC = () => {
 
                     <div className="mt-8 text-center">
                         <Link to="/signin" className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
-                            <ArrowLeft size={16} /> Back to Sign In
+                            <ArrowLeft size={16} /> Back to Login
                         </Link>
                     </div>
                 </div>

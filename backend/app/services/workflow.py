@@ -3,7 +3,7 @@ from typing import TypedDict, Annotated
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 
-from app.agents.inspector import extract_receipt_json
+from app.agents.inspector import extract_receipt_json, map_category_to_tax_rule
 from app.agents.tax_expert import ask_tax_expert
 from app.agents.accountant import save_receipt_from_inspector
 
@@ -82,10 +82,16 @@ def accountant_node(state: AgentState) -> AgentState:
     receipt_data = state["receipt_data"]
     user_id = state.get("user_id", "demo-user-id")
     
+    # Auto-detect category from receipt content
+    detected_category = receipt_data.get("category")
+    final_category = map_category_to_tax_rule(detected_category) if detected_category else "Health Insurance"
+    
+    print(f"Detected category: {detected_category} -> Mapped to: {final_category}")
+    
     result = save_receipt_from_inspector(
         user_id=user_id,
         receipt_data=receipt_data,
-        category_name="Health Insurance"
+        category_name=final_category
     )
     
     state["accountant_result"] = result

@@ -11,6 +11,76 @@ from app.core.config import settings
 genai_client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
 
+def map_category_to_tax_rule(detected_category: str) -> str:
+    """Map detected category to valid tax rule category.
+    
+    Args:
+        detected_category: Category detected from receipt
+        
+    Returns:
+        Valid tax rule category name or default
+    """
+    valid_categories = [
+        "Easy E-Receipt",
+        "Thai ESG",
+        "Life Insurance",
+        "Health Insurance",
+        "Pension Insurance",
+        "Social Security",
+        "Provident Fund",
+        "SSF",
+        "RMF",
+        "Home Loan Interest",
+        "Donation (General)",
+        "Donation (Education/Sports)"
+    ]
+    
+    if not detected_category:
+        return "Easy E-Receipt"
+    
+    # Exact match
+    if detected_category in valid_categories:
+        return detected_category
+    
+    # Fuzzy matching for common variations
+    category_lower = detected_category.lower()
+    
+    # Insurance categories
+    if any(keyword in category_lower for keyword in ["health insurance", "medical insurance"]):
+        return "Health Insurance"
+    elif any(keyword in category_lower for keyword in ["life insurance"]):
+        return "Life Insurance"
+    elif any(keyword in category_lower for keyword in ["pension", "retirement insurance"]):
+        return "Pension Insurance"
+    
+    # Investment funds
+    elif any(keyword in category_lower for keyword in ["ssf", "super saving"]):
+        return "SSF"
+    elif any(keyword in category_lower for keyword in ["rmf", "retirement mutual"]):
+        return "RMF"
+    elif any(keyword in category_lower for keyword in ["esg", "thai esg"]):
+        return "Thai ESG"
+    
+    # Other specific categories
+    elif any(keyword in category_lower for keyword in ["social security", "sso", "ประกันสังคม"]):
+        return "Social Security"
+    elif any(keyword in category_lower for keyword in ["provident", "pvd", "กองทุนสำรอง"]):
+        return "Provident Fund"
+    elif any(keyword in category_lower for keyword in ["home loan", "mortgage", "ดอกเบี้ยบ้าน"]):
+        return "Home Loan Interest"
+    elif any(keyword in category_lower for keyword in ["donation", "บริจาค"]):
+        if any(keyword in category_lower for keyword in ["education", "sport", "การศึกษา", "กีฬา"]):
+            return "Donation (Education/Sports)"
+        return "Donation (General)"
+    
+    # General/retail receipts - default for unmatched
+    elif any(keyword in category_lower for keyword in ["receipt", "e-receipt", "retail", "shop", "store"]):
+        return "Easy E-Receipt"
+    
+    # Default fallback for general business transactions
+    return "Easy E-Receipt"
+
+
 def load_image(image_path):
     """Load image file and return as bytes."""
     try:
@@ -29,13 +99,35 @@ Return ONLY a valid JSON object with these exact fields:
 {
   "date": "YYYY-MM-DD format or original format if clear",
   "amount": "numeric value only (e.g., 1234.50)",
-  "tax_id": "vendor tax identification number"
+  "tax_id": "vendor tax identification number",
+  "merchant_name": "name of the merchant or store",
+  "category": "tax category classification"
 }
 
 Rules:
 - If a field is not found or unclear, use null
 - For amount: extract the final total/grand total as a number
 - For tax_id: extract the vendor's tax ID (not customer's)
+- For merchant_name: extract the business/store name
+- For category: classify the receipt into ONE of these Thai tax deduction categories:
+  * "Easy E-Receipt" - general purchases, retail shops, restaurants, regular business receipts
+  * "Thai ESG" - ESG investment fund payments
+  * "Life Insurance" - life insurance premium payments
+  * "Health Insurance" - health/medical insurance premiums, NOT general hospital bills
+  * "Pension Insurance" - pension/retirement insurance premiums
+  * "Social Security" - social security contributions (SSO)
+  * "Provident Fund" - provident fund (PVD) contributions
+  * "SSF" - Super Savings Fund investments
+  * "RMF" - Retirement Mutual Fund investments
+  * "Home Loan Interest" - home mortgage interest payments
+  * "Donation (General)" - general charitable donations
+  * "Donation (Education/Sports)" - education or sports donations
+- IMPORTANT: Choose the MOST SPECIFIC category that matches:
+  - Regular shopping/retail receipts = "Easy E-Receipt"
+  - Insurance premiums ONLY = respective insurance category
+  - Investment funds = SSF/RMF/Thai ESG
+  - Donations = respective donation category
+- Default to "Easy E-Receipt" for general business transactions
 - Return ONLY the JSON object, no additional text
 
 JSON:"""
