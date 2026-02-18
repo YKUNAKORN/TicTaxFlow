@@ -1,7 +1,9 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useState } from 'react';
 import { LayoutDashboard, Receipt, BookOpen, LogOut, X, Bot } from 'lucide-react';
 import { clsx } from 'clsx';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
+
+import { authApi } from '../../api/auth';
 
 interface SidebarProps {
     isOpen: boolean;
@@ -11,12 +13,31 @@ interface SidebarProps {
 import logo from '../../assets/logo-icon.png';
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
+    const navigate = useNavigate();
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
+
     const navItems = [
         { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
         { icon: Receipt, label: 'Transactions', path: '/transactions' },
         { icon: Bot, label: 'AI Agent', path: '/agent' },
         { icon: BookOpen, label: 'Tax Rules (AI Docs)', path: '/tax-rules' },
     ];
+
+    const handleLogout = async () => {
+        if (isLoggingOut) return;
+        
+        setIsLoggingOut(true);
+        
+        try {
+            await authApi.logout();
+            navigate('/signin');
+        } catch (err) {
+            console.error('Logout error:', err);
+            navigate('/signin');
+        } finally {
+            setIsLoggingOut(false);
+        }
+    };
 
     return (
         <>
@@ -69,10 +90,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 </nav>
 
                 <div className="p-4 border-t border-slate-100">
-                    <NavLink to="/" className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors group">
+                    <button 
+                        onClick={handleLogout}
+                        disabled={isLoggingOut}
+                        className="flex items-center gap-3 w-full px-4 py-3 text-sm text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors group disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
                         <LogOut size={20} className="group-hover:text-red-500" />
-                        Sign Out
-                    </NavLink>
+                        {isLoggingOut ? 'Signing Out...' : 'Sign Out'}
+                    </button>
                 </div>
             </aside>
         </>

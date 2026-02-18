@@ -53,30 +53,42 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({ transactions, onS
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
-                        {transactions.map((tx) => (
-                            <tr
-                                key={tx.id}
-                                onClick={() => onSelectTransaction(tx)}
-                                className="hover:bg-slate-50 transition-colors cursor-pointer"
-                            >
-                                <td className="px-6 py-4 whitespace-nowrap">{tx.date}</td>
-                                <td className="px-6 py-4 font-medium text-slate-900">{tx.merchant}</td>
-                                <td className="px-6 py-4">
-                                    <span className="px-2 py-1 bg-slate-100 rounded text-slate-600 text-xs">
-                                        {tx.category}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 text-right font-medium text-slate-900">
-                                    ฿{tx.amount.toLocaleString()}
-                                </td>
-                                <td className="px-6 py-4">{getStatusBadge(tx.status)}</td>
-                                <td className="px-6 py-4 text-right">
-                                    <button className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100">
-                                        <MoreHorizontal size={20} />
-                                    </button>
+                        {transactions.length === 0 ? (
+                            <tr>
+                                <td colSpan={6} className="px-6 py-12 text-center">
+                                    <div className="flex flex-col items-center justify-center text-slate-400">
+                                        <FileCheck size={48} className="mb-3 opacity-30" />
+                                        <p className="text-sm font-medium text-slate-600">No transactions yet</p>
+                                        <p className="text-xs mt-1">Upload a receipt to get started</p>
+                                    </div>
                                 </td>
                             </tr>
-                        ))}
+                        ) : (
+                            transactions.map((tx) => (
+                                <tr
+                                    key={tx.id}
+                                    onClick={() => onSelectTransaction(tx)}
+                                    className="hover:bg-slate-50 transition-colors cursor-pointer"
+                                >
+                                    <td className="px-6 py-4 whitespace-nowrap">{tx.date}</td>
+                                    <td className="px-6 py-4 font-medium text-slate-900">{tx.merchant}</td>
+                                    <td className="px-6 py-4">
+                                        <span className="px-2 py-1 bg-slate-100 rounded text-slate-600 text-xs">
+                                            {tx.category}
+                                        </span>
+                                    </td>
+                                    <td className="px-6 py-4 text-right font-medium text-slate-900">
+                                        ฿{tx.amount.toLocaleString()}
+                                    </td>
+                                    <td className="px-6 py-4">{getStatusBadge(tx.status)}</td>
+                                    <td className="px-6 py-4 text-right">
+                                        <button className="text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100">
+                                            <MoreHorizontal size={20} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
                     </tbody>
                 </table>
             </div>

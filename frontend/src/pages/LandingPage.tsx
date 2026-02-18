@@ -19,7 +19,7 @@ const LandingPage: React.FC = () => {
                     <Link to="/tax-rules" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">About</Link>
                 </div>
                 <div className="flex items-center gap-4">
-                    <Link to="/signin" className="text-sm font-medium text-slate-600 hover:text-slate-900">Sign In</Link>
+                    <Link to="/signin" className="text-sm font-medium text-slate-600 hover:text-slate-900">Login</Link>
                     <Link
                         to="/signup"
                         className="px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 transition-colors"

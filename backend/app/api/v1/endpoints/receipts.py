@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from typing import Optional
 from pydantic import BaseModel
 
-from app.agents.inspector import extract_receipt_json, extract_receipt_from_bytes
+from app.agents.inspector import extract_receipt_json, extract_receipt_from_bytes, map_category_to_tax_rule
 from app.agents.accountant import save_receipt_from_inspector
 
 router = APIRouter()
@@ -61,26 +61,50 @@ async def upload_receipt(
         
         print(f"File saved to: {file_path}")
         
+        # Generate URL for serving the image
+        receipt_url = f"/receipts/{unique_filename}"
+        
         # Extract data using Inspector Agent
         receipt_data = extract_receipt_json(str(file_path))
         
         if "error" in receipt_data:
+            error_msg = receipt_data.get('error', 'Unknown error')
+            
+            # Provide user-friendly error messages
+            if 'API key not valid' in str(error_msg) or 'API_KEY_INVALID' in str(error_msg):
+                raise HTTPException(
+                    status_code=503,
+                    detail="AI service configuration error. Please contact administrator to set up the API key."
+                )
+            
             raise HTTPException(
                 status_code=400,
-                detail=f"Failed to extract receipt data: {receipt_data.get('error')}"
+                detail=f"Failed to extract receipt data: {error_msg}"
             )
+        
+        # Auto-detect category from receipt content
+        detected_category = receipt_data.get("category")
+        final_category = map_category_to_tax_rule(detected_category) if detected_category else category_name
+        
+        print(f"Detected category: {detected_category} -> Mapped to: {final_category}")
+        print(f"Extracted receipt data: {receipt_data}")
         
         # Save to database using Accountant Agent
         save_result = save_receipt_from_inspector(
             user_id=user_id,
             receipt_data=receipt_data,
-            category_name=category_name
+            category_name=final_category,
+            receipt_image_url=receipt_url
         )
         
+        print(f"Save result: {save_result}")
+        
         if not save_result.get("success"):
+            error_detail = save_result.get('error', 'Unknown error')
+            print(f"Failed to save transaction: {error_detail}")
             raise HTTPException(
                 status_code=400,
-                detail=f"Failed to save transaction: {save_result.get('error')}"
+                detail=f"Failed to save transaction: {error_detail}"
             )
         
         return {
@@ -133,16 +157,32 @@ async def upload_receipt_base64(request: Base64ImageRequest):
         receipt_data = extract_receipt_from_bytes(image_bytes)
         
         if "error" in receipt_data:
+            error_msg = receipt_data.get('error', 'Unknown error')
+            
+            # Provide user-friendly error messages
+            if 'API key not valid' in str(error_msg) or 'API_KEY_INVALID' in str(error_msg):
+                raise HTTPException(
+                    status_code=503,
+                    detail="AI service configuration error. Please contact administrator to set up the API key."
+                )
+            
             raise HTTPException(
                 status_code=400,
-                detail=f"Failed to extract receipt data: {receipt_data.get('error')}"
+                detail=f"Failed to extract receipt data: {error_msg}"
             )
+        
+        # Auto-detect category from receipt content
+        detected_category = receipt_data.get("category")
+        final_category = map_category_to_tax_rule(detected_category) if detected_category else request.category_name
+        
+        print(f"Detected category: {detected_category} -> Mapped to: {final_category}")
         
         # Save to database using Accountant Agent
         save_result = save_receipt_from_inspector(
             user_id=request.user_id,
             receipt_data=receipt_data,
-            category_name=request.category_name
+            category_name=final_category,
+            receipt_image_url=None
         )
         
         if not save_result.get("success"):
@@ -189,16 +229,32 @@ async def process_receipt_from_path(
         receipt_data = extract_receipt_json(image_path)
         
         if "error" in receipt_data:
+            error_msg = receipt_data.get('error', 'Unknown error')
+            
+            # Provide user-friendly error messages
+            if 'API key not valid' in str(error_msg) or 'API_KEY_INVALID' in str(error_msg):
+                raise HTTPException(
+                    status_code=503,
+                    detail="AI service configuration error. Please contact administrator to set up the API key."
+                )
+            
             raise HTTPException(
                 status_code=400,
-                detail=f"Failed to extract receipt data: {receipt_data.get('error')}"
+                detail=f"Failed to extract receipt data: {error_msg}"
             )
+        
+        # Auto-detect category from receipt content
+        detected_category = receipt_data.get("category")
+        final_category = map_category_to_tax_rule(detected_category) if detected_category else category_name
+        
+        print(f"Detected category: {detected_category} -> Mapped to: {final_category}")
         
         # Save to database using Accountant Agent
         save_result = save_receipt_from_inspector(
             user_id=user_id,
             receipt_data=receipt_data,
-            category_name=category_name
+            category_name=final_category,
+            receipt_image_url=image_path
         )
         
         if not save_result.get("success"):

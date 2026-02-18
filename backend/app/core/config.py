@@ -36,7 +36,7 @@ class Settings:
     CHROMA_COLLECTION_NAME: str = "document_collection"
     
     # Agent Settings
-    DEFAULT_TAX_YEAR: int = 2026
+    DEFAULT_TAX_YEAR: int = 2025
     CHUNK_SIZE: int = 1000
     CHUNK_OVERLAP: int = 200
     RAG_N_RESULTS: int = 5
