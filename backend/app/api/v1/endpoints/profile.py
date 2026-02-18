@@ -11,6 +11,7 @@ router = APIRouter()
 class ProfileResponse(BaseModel):
     id: str
     email: str
+    username: Optional[str] = None
     full_name: Optional[str] = None
     phone: Optional[str] = None
     annual_income: Optional[float] = None
@@ -60,10 +61,20 @@ async def get_my_profile(authorization: Optional[str] = Header(None)):
         
         user = auth_response.user
         
+        # Try to get username from public.users table
+        username = user.user_metadata.get("full_name")
+        try:
+            user_data = supabase.table("users").select("username").eq("id", user.id).execute()
+            if user_data.data and len(user_data.data) > 0:
+                username = user_data.data[0].get("username", username)
+        except Exception as e:
+            print(f"Warning: Could not fetch username from users table: {e}")
+        
         # Build profile response
         profile = {
             "id": user.id,
             "email": user.email,
+            "username": username,
             "full_name": user.user_metadata.get("full_name"),
             "phone": user.user_metadata.get("phone"),
             "annual_income": user.user_metadata.get("annual_income"),

@@ -15,8 +15,14 @@ export const authApi = {
       credentials
     );
 
+    console.log('Login response:', response);
+    console.log('User ID:', response.user.id);
+
     storage.setToken(response.access_token);
     storage.setRefreshToken(response.refresh_token);
+    storage.setUserId(response.user.id);
+
+    console.log('Stored user ID:', storage.getUserId());
 
     return response;
   },
