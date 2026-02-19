@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Header
 from typing import Optional
 from pydantic import BaseModel
 
-from app.database.database import supabase
+from app.database.database import supabase, get_auth_client
 
 router = APIRouter()
 
@@ -32,8 +32,9 @@ def extract_user_id_from_token(authorization: Optional[str]) -> str:
     token = authorization.replace("Bearer ", "")
     
     try:
-        # Get user from token
-        response = supabase.auth.get_user(token)
+        # Use a fresh client for token validation to avoid polluting the shared client
+        auth_client = get_auth_client()
+        response = auth_client.auth.get_user(token)
         
         if not response or not response.user:
             raise HTTPException(status_code=401, detail="Invalid token")
@@ -52,9 +53,10 @@ async def get_my_profile(authorization: Optional[str] = Header(None)):
     user_id = extract_user_id_from_token(authorization)
     
     try:
-        # Get user metadata from Supabase Auth
+        # Get user metadata from Supabase Auth using a fresh client
         token = authorization.replace("Bearer ", "")
-        auth_response = supabase.auth.get_user(token)
+        auth_client = get_auth_client()
+        auth_response = auth_client.auth.get_user(token)
         
         if not auth_response or not auth_response.user:
             raise HTTPException(status_code=404, detail="User not found")

@@ -2,8 +2,8 @@ from fastapi import APIRouter, HTTPException, status, Header
 from typing import Optional
 import bcrypt
 
-from app.schemas.user import UserRegister, RegisterResponse, UserResponse, UserLogin, LoginResponse
-from app.database.database import supabase
+from app.schemas.user import UserRegister, RegisterResponse, UserResponse, UserLogin, LoginResponse, ChangePassword
+from app.database.database import supabase, get_auth_client
 
 router = APIRouter()
 
@@ -27,8 +27,10 @@ async def register(user_data: UserRegister):
     """
     
     try:
-        # Use Supabase Auth to create user (handles password hashing, JWT, etc.)
-        response = supabase.auth.sign_up({
+        # Use a fresh client so the shared DB client is not polluted
+        auth_client = get_auth_client()
+        
+        response = auth_client.auth.sign_up({
             "email": user_data.email,
             "password": user_data.password,
             "options": {
@@ -93,8 +95,9 @@ async def login(user_data: UserLogin):
     """
 
     try:
-        # Use Supabase Auth to sign in (returns JWT tokens automatically)
-        response = supabase.auth.sign_in_with_password({
+        # Use a fresh client so the shared DB client is not polluted
+        auth_client = get_auth_client()
+        response = auth_client.auth.sign_in_with_password({
             "email": user_data.email,
             "password": user_data.password
         })
@@ -123,6 +126,9 @@ async def login(user_data: UserLogin):
             refresh_token = response.session.refresh_token
         )
     
+    except HTTPException:
+        raise
+    
     except Exception as e:
         raise HTTPException(
             status_code = status.HTTP_401_UNAUTHORIZED,
@@ -143,15 +149,10 @@ async def logout(authorization: Optional[str] = Header(None)):
     """
     
     try:
-        # Extract token from Authorization header if provided
-        if authorization and authorization.startswith("Bearer "):
-            token = authorization.replace("Bearer ", "")
-            
-            # Set the session with the provided token before signing out
-            supabase.auth.set_session(token, token)
-        
-        # Sign out from Supabase (invalidates the session)
-        supabase.auth.sign_out()
+        # Logout is handled client-side by removing tokens from localStorage.
+        # We no longer call supabase.auth.sign_out() or supabase.auth.set_session()
+        # on the shared server client because it corrupts its auth state for
+        # all subsequent requests from other endpoints.
         
         return {
             "message": "Logout successful",
@@ -162,4 +163,83 @@ async def logout(authorization: Optional[str] = Header(None)):
         raise HTTPException(
             status_code = status.HTTP_400_BAD_REQUEST,
             detail = str(e)
+        )
+
+
+@router.post("/change-password", summary="Change user password")
+async def change_password(
+    password_data: ChangePassword,
+    authorization: Optional[str] = Header(None)
+):
+    """
+    Change the authenticated user's password.
+    
+    Requires current password verification and new password.
+    """
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing or invalid authorization token"
+        )
+    
+    token = authorization.replace("Bearer ", "")
+    
+    try:
+        # Use a fresh client for all auth operations
+        auth_client = get_auth_client()
+        
+        user_response = auth_client.auth.get_user(token)
+        
+        if not user_response or not user_response.user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token"
+            )
+        
+        user_email = user_response.user.email
+        
+        # Verify current password with another fresh client
+        verify_client = get_auth_client()
+        try:
+            verify_response = verify_client.auth.sign_in_with_password({
+                "email": user_email,
+                "password": password_data.current_password
+            })
+            
+            if not verify_response.user:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Current password is incorrect"
+                )
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Current password is incorrect"
+            )
+        
+        # Update password using admin API on the shared client (no session needed)
+        update_response = supabase.auth.admin.update_user_by_id(
+            user_response.user.id,
+            {"password": password_data.new_password}
+        )
+        
+        if not update_response or not update_response.user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Failed to update password"
+            )
+        
+        return {
+            "success": True,
+            "message": "Password changed successfully"
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to change password: {str(e)}"
         )

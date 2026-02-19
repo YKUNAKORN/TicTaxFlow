@@ -8,6 +8,7 @@ import SignInPage from './pages/SignInPage';
 import SignUpPage from './pages/SignUpPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import AgentPage from './pages/AgentPage';
+import ProfilePage from './pages/ProfilePage';
 
 function App() {
     return (
@@ -41,6 +42,12 @@ function App() {
                 <Route path="/agent" element={
                     <Layout>
                         <AgentPage />
+                    </Layout>
+                } />
+
+                <Route path="/profile" element={
+                    <Layout>
+                        <ProfilePage />
                     </Layout>
                 } />
 

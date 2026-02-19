@@ -19,8 +19,11 @@ const SignInPage: React.FC = () => {
         setIsLoading(true);
 
         try {
-            await authApi.login({ email, password });
-            navigate('/dashboard');
+            const response = await authApi.login({ email, password });
+            
+            console.log('Login successful, user ID:', response.user.id);
+            
+            navigate('/dashboard', { replace: true });
         } catch (err) {
             if (err instanceof ApiError) {
                 setError(err.message);

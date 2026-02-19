@@ -17,7 +17,64 @@ const DashboardPage: React.FC = () => {
     const [summaryData, setSummaryData] = useState<DashboardSummary | null>(null);
 
     useEffect(() => {
+        let cancelled = false;
+
+        const fetchDashboardData = async () => {
+            setIsLoading(true);
+            setError('');
+
+            try {
+                let userId = storage.getUserId();
+                
+                console.log('[Initial] User ID from storage:', userId);
+                
+                if (!userId) {
+                    console.log('[Retry] Waiting 200ms and checking again...');
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    userId = storage.getUserId();
+                    console.log('[Retry] User ID after wait:', userId);
+                }
+                
+                if (!userId) {
+                    console.error('No user ID found in storage after retry');
+                    if (!cancelled) {
+                        setError('User not logged in');
+                        setIsLoading(false);
+                    }
+                    return;
+                }
+
+                console.log('[Fetch] Fetching dashboard for user:', userId);
+                const response = await dashboardApi.getSummary(userId);
+                
+                console.log('[Response] Dashboard API response:', response);
+                console.log('[Response] Recent transactions count:', response.data?.recent_transactions?.length || 0);
+                
+                if (!cancelled) {
+                    if (response.success && response.data) {
+                        console.log('[Success] Setting summary data...');
+                        setSummaryData(response.data);
+                    } else {
+                        setError('Failed to load dashboard data');
+                    }
+                }
+            } catch (err: any) {
+                console.error('[Error] Failed to fetch dashboard data:', err);
+                if (!cancelled) {
+                    setError(err?.message || 'Failed to load dashboard data');
+                }
+            } finally {
+                if (!cancelled) {
+                    setIsLoading(false);
+                }
+            }
+        };
+
         fetchDashboardData();
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     const fetchDashboardData = async (silent = false) => {
@@ -31,7 +88,7 @@ const DashboardPage: React.FC = () => {
         try {
             const userId = storage.getUserId();
             
-            console.log('Fetching dashboard for user:', userId);
+            console.log('Refetching dashboard for user:', userId);
             
             if (!userId) {
                 console.error('No user ID found in storage');
@@ -42,13 +99,15 @@ const DashboardPage: React.FC = () => {
 
             const response = await dashboardApi.getSummary(userId);
             
-            console.log('Dashboard API response:', response);
+            console.log('Dashboard refetch response:', response);
             
             if (response.success) {
                 setSummaryData(response.data);
+            } else {
+                setError('Failed to load dashboard data');
             }
         } catch (err: any) {
-            console.error('Failed to fetch dashboard data:', err);
+            console.error('Failed to refetch dashboard data:', err);
             setError(err?.message || 'Failed to load dashboard data');
         } finally {
             setIsLoading(false);
@@ -135,7 +194,9 @@ const DashboardPage: React.FC = () => {
     };
 
     const mapToTransactions = (): Transaction[] => {
-        if (!summaryData) return [];
+        if (!summaryData || !summaryData.recent_transactions) {
+            return [];
+        }
 
         const API_BASE_URL = 'http://localhost:8000';
 

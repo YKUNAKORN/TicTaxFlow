@@ -4,7 +4,7 @@ from typing import Optional
 from pydantic import BaseModel
 from datetime import datetime
 
-from app.database.database import supabase
+from app.database.database import supabase, get_auth_client
 from app.agents.tax_expert import ask_tax_expert
 
 
@@ -19,7 +19,8 @@ def extract_user_id_from_token(authorization: Optional[str]) -> str:
     token = authorization.replace("Bearer ", "")
     
     try:
-        response = supabase.auth.get_user(token)
+        auth_client = get_auth_client()
+        response = auth_client.auth.get_user(token)
         
         if not response or not response.user:
             raise HTTPException(status_code=401, detail="Invalid token")
