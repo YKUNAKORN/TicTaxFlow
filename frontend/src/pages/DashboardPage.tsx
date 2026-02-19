@@ -17,64 +17,7 @@ const DashboardPage: React.FC = () => {
     const [summaryData, setSummaryData] = useState<DashboardSummary | null>(null);
 
     useEffect(() => {
-        let cancelled = false;
-
-        const fetchDashboardData = async () => {
-            setIsLoading(true);
-            setError('');
-
-            try {
-                let userId = storage.getUserId();
-                
-                console.log('[Initial] User ID from storage:', userId);
-                
-                if (!userId) {
-                    console.log('[Retry] Waiting 200ms and checking again...');
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                    userId = storage.getUserId();
-                    console.log('[Retry] User ID after wait:', userId);
-                }
-                
-                if (!userId) {
-                    console.error('No user ID found in storage after retry');
-                    if (!cancelled) {
-                        setError('User not logged in');
-                        setIsLoading(false);
-                    }
-                    return;
-                }
-
-                console.log('[Fetch] Fetching dashboard for user:', userId);
-                const response = await dashboardApi.getSummary(userId);
-                
-                console.log('[Response] Dashboard API response:', response);
-                console.log('[Response] Recent transactions count:', response.data?.recent_transactions?.length || 0);
-                
-                if (!cancelled) {
-                    if (response.success && response.data) {
-                        console.log('[Success] Setting summary data...');
-                        setSummaryData(response.data);
-                    } else {
-                        setError('Failed to load dashboard data');
-                    }
-                }
-            } catch (err: any) {
-                console.error('[Error] Failed to fetch dashboard data:', err);
-                if (!cancelled) {
-                    setError(err?.message || 'Failed to load dashboard data');
-                }
-            } finally {
-                if (!cancelled) {
-                    setIsLoading(false);
-                }
-            }
-        };
-
         fetchDashboardData();
-
-        return () => {
-            cancelled = true;
-        };
     }, []);
 
     const fetchDashboardData = async (silent = false) => {
@@ -87,27 +30,44 @@ const DashboardPage: React.FC = () => {
 
         try {
             const userId = storage.getUserId();
+            const token = storage.getToken();
             
-            console.log('Refetching dashboard for user:', userId);
+            console.log('=== Dashboard Data Fetch Debug ===');
+            console.log('User ID from storage:', userId);
+            console.log('User ID length:', userId?.length);
+            console.log('Has token:', !!token);
             
             if (!userId) {
-                console.error('No user ID found in storage');
+                console.error('ERROR: No user ID found in storage');
                 setError('User not logged in');
                 setIsLoading(false);
                 return;
             }
 
+            console.log('Calling API with userId:', userId);
             const response = await dashboardApi.getSummary(userId);
             
-            console.log('Dashboard refetch response:', response);
+            console.log('SUCCESS: Dashboard API response:', response);
+            console.log('Response success:', response.success);
+            console.log('Response data:', response.data);
+            
+            if (response.data) {
+                console.log('Total deductible:', response.data.total_deductible);
+                console.log('Total transactions:', response.data.total_transactions);
+                console.log('Recent transactions count:', response.data.recent_transactions?.length);
+                console.log('Recent transactions:', response.data.recent_transactions);
+            }
             
             if (response.success) {
                 setSummaryData(response.data);
-            } else {
-                setError('Failed to load dashboard data');
+                
+                if (response.data.total_transactions === 0) {
+                    console.warn('WARNING: No transactions found for this user');
+                }
             }
         } catch (err: any) {
-            console.error('Failed to refetch dashboard data:', err);
+            console.error('ERROR: Failed to fetch dashboard data:', err);
+            console.error('Error details:', err.response?.data || err.message);
             setError(err?.message || 'Failed to load dashboard data');
         } finally {
             setIsLoading(false);
@@ -194,9 +154,7 @@ const DashboardPage: React.FC = () => {
     };
 
     const mapToTransactions = (): Transaction[] => {
-        if (!summaryData || !summaryData.recent_transactions) {
-            return [];
-        }
+        if (!summaryData) return [];
 
         const API_BASE_URL = 'http://localhost:8000';
 
@@ -285,9 +243,26 @@ const DashboardPage: React.FC = () => {
     return (
         <div className="space-y-6">
             {/* Header Section of the Page */}
-            <div>
-                <h2 className="text-2xl font-bold text-slate-900">Dashboard</h2>
-                <p className="text-slate-500 mt-1">Overview of your tax deductions and uploaded documents.</p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h2 className="text-2xl font-bold text-slate-900">Dashboard</h2>
+                    <p className="text-slate-500 mt-1">Overview of your tax deductions and uploaded documents.</p>
+                </div>
+                <button
+                    onClick={() => fetchDashboardData(true)}
+                    disabled={isRefreshing}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <svg 
+                        className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`}
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    {isRefreshing ? 'Refreshing...' : 'Refresh'}
+                </button>
             </div>
 
             <SummaryCards stats={mapToSummaryStats()} />

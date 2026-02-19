@@ -1,17 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, ArrowRight, AlertCircle } from 'lucide-react';
+import { Mail, Lock, ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 import logo from '../assets/logo-icon.png';
 import { authApi } from '../api/auth';
 import { ApiError } from '../api/client';
+import { storage } from '../lib/storage';
 
 const SignInPage: React.FC = () => {
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [rememberMe, setRememberMe] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        const savedEmail = storage.getRememberedEmail();
+        const savedPassword = storage.getRememberedPassword();
+        
+        if (savedEmail && savedPassword) {
+            setEmail(savedEmail);
+            setPassword(savedPassword);
+            setRememberMe(true);
+        }
+    }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -19,11 +33,16 @@ const SignInPage: React.FC = () => {
         setIsLoading(true);
 
         try {
-            const response = await authApi.login({ email, password });
+            await authApi.login({ email, password });
             
-            console.log('Login successful, user ID:', response.user.id);
+            if (rememberMe) {
+                storage.setRememberedEmail(email);
+                storage.setRememberedPassword(password);
+            } else {
+                storage.clearRememberedCredentials();
+            }
             
-            navigate('/dashboard', { replace: true });
+            navigate('/dashboard');
         } catch (err) {
             if (err instanceof ApiError) {
                 setError(err.message);
@@ -83,15 +102,40 @@ const SignInPage: React.FC = () => {
                                     <Lock className="h-5 w-5 text-slate-400" />
                                 </div>
                                 <input
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     required
                                     disabled={isLoading}
-                                    className="block w-full pl-10 pr-3 py-3 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-slate-50 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="block w-full pl-10 pr-12 py-3 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-slate-50 hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed"
                                     placeholder="••••••••"
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                                    disabled={isLoading}
+                                >
+                                    {showPassword ? (
+                                        <EyeOff className="h-5 w-5" />
+                                    ) : (
+                                        <Eye className="h-5 w-5" />
+                                    )}
+                                </button>
                             </div>
+                        </div>
+
+                        <div className="flex items-center">
+                            <input
+                                id="remember-me"
+                                type="checkbox"
+                                checked={rememberMe}
+                                onChange={(e) => setRememberMe(e.target.checked)}
+                                className="h-4 w-4 text-primary-600 accent-primary-600 border-slate-300 rounded focus:ring-primary-500 focus:ring-2"
+                            />
+                            <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-700">
+                                Remember me
+                            </label>
                         </div>
 
                         <button
