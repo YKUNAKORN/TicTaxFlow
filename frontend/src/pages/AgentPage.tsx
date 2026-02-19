@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, User, MoreVertical, Paperclip, Mic } from 'lucide-react';
 import { clsx } from 'clsx';
+import ReactMarkdown from 'react-markdown';
 import logo from '../assets/logo-icon.png';
+import { agentApi } from '../api';
 
 interface Message {
     id: string;
@@ -29,7 +31,7 @@ const AgentPage: React.FC = () => {
     }, [messages]);
 
     // Handle sending a message
-    const handleSendMessage = () => {
+    const handleSendMessage = async () => {
         if (!inputValue.trim()) return;
 
         const newUserMessage: Message = {
@@ -40,20 +42,35 @@ const AgentPage: React.FC = () => {
         };
 
         setMessages(prev => [...prev, newUserMessage]);
+        const userQuestion = inputValue;
         setInputValue('');
         setIsTyping(true);
 
-        // Simulate agent response
-        setTimeout(() => {
+        try {
+            const response = await agentApi.sendMessage(userQuestion);
+            
             const newAgentMessage: Message = {
                 id: (Date.now() + 1).toString(),
-                text: "I can help analyze your transactions and suggest potential tax deductions based on your recent activity.",
+                text: response.response,
+                sender: 'agent',
+                timestamp: new Date(response.timestamp)
+            };
+            
+            setMessages(prev => [...prev, newAgentMessage]);
+        } catch (error) {
+            console.error('Failed to send message:', error);
+            
+            const errorMessage: Message = {
+                id: (Date.now() + 1).toString(),
+                text: 'Sorry, I encountered an error processing your message. Please try again.',
                 sender: 'agent',
                 timestamp: new Date()
             };
-            setMessages(prev => [...prev, newAgentMessage]);
+            
+            setMessages(prev => [...prev, errorMessage]);
+        } finally {
             setIsTyping(false);
-        }, 1500);
+        }
     };
 
     // Handle Enter key press
@@ -95,6 +112,45 @@ const AgentPage: React.FC = () => {
                     .animate-fade-in {
                         animation: fadeIn 0.3s ease-out forwards;
                     }
+                    .markdown-content {
+                        line-height: 1.6;
+                    }
+                    .markdown-content p {
+                        margin-bottom: 0.75rem;
+                    }
+                    .markdown-content p:last-child {
+                        margin-bottom: 0;
+                    }
+                    .markdown-content ul, .markdown-content ol {
+                        margin-left: 1.25rem;
+                        margin-bottom: 0.75rem;
+                    }
+                    .markdown-content li {
+                        margin-bottom: 0.375rem;
+                    }
+                    .markdown-content strong {
+                        font-weight: 600;
+                    }
+                    .markdown-content code {
+                        background-color: rgba(0, 0, 0, 0.05);
+                        padding: 0.125rem 0.25rem;
+                        border-radius: 0.25rem;
+                        font-size: 0.875em;
+                    }
+                    .markdown-content h1, .markdown-content h2, .markdown-content h3 {
+                        font-weight: 600;
+                        margin-top: 1rem;
+                        margin-bottom: 0.5rem;
+                    }
+                    .markdown-content h1 {
+                        font-size: 1.25rem;
+                    }
+                    .markdown-content h2 {
+                        font-size: 1.125rem;
+                    }
+                    .markdown-content h3 {
+                        font-size: 1rem;
+                    }
                 `}</style>
                 {messages.map((msg) => (
                     <div
@@ -120,7 +176,13 @@ const AgentPage: React.FC = () => {
                                     : "bg-white text-slate-700 border border-slate-100 rounded-bl-none"
                             )}
                         >
-                            <p className="break-words">{msg.text}</p>
+                            {msg.sender === 'agent' ? (
+                                <div className="markdown-content break-words">
+                                    <ReactMarkdown>{msg.text}</ReactMarkdown>
+                                </div>
+                            ) : (
+                                <p className="break-words">{msg.text}</p>
+                            )}
                             <span className={clsx(
                                 "text-[10px] opacity-60 mt-1 select-none",
                                 msg.sender === 'user' ? "text-primary-100 self-end" : "text-slate-400 self-start"

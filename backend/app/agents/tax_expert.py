@@ -53,8 +53,14 @@ Question: {question}
 Instructions:
 - Answer in the same language as the question (Thai or English)
 - Be precise with numbers and amounts
-- Keep answer concise but complete
-- If there are multiple conditions, list them clearly
+- Format your answer for easy reading:
+  * Use bullet points (-) for listing items
+  * Use **bold** for important numbers and limits
+  * Use line breaks to separate different topics
+  * Keep paragraphs short (2-3 sentences max)
+  * Use clear section headers when discussing multiple deductions
+- If there are multiple conditions, list them as separate bullet points
+- Start with a brief summary, then provide details
 
 Answer:"""
     
