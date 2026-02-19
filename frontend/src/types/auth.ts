@@ -32,3 +32,13 @@ export interface LogoutResponse {
   message: string;
   detail: string;
 }
+
+export interface ChangePasswordRequest {
+  current_password: string;
+  new_password: string;
+}
+
+export interface ChangePasswordResponse {
+  success: boolean;
+  message: string;
+}

@@ -1,15 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import { Menu, User, Bell } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 import { profileApi } from '../../api/profile';
-import type { UserProfile } from '../../types/profile';
+
+// Map route paths to display titles
+const PAGE_TITLES: Record<string, string> = {
+    '/dashboard': 'Dashboard',
+    '/transactions': 'Transactions',
+    '/agent': 'AI Agent',
+    '/tax-rules': 'Tax Rules',
+    '/profile': 'Profile',
+};
 
 interface HeaderProps {
     onMenuClick: () => void;
-    title?: string;
 }
 
-const Header: React.FC<HeaderProps> = ({ onMenuClick, title = "Dashboard" }) => {
-    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
+    const location = useLocation();
+    const [userProfile, setUserProfile] = useState<any>(null);
+
+    const pageTitle = PAGE_TITLES[location.pathname] || 'Dashboard';
 
     useEffect(() => {
         fetchUserProfile();
@@ -37,7 +48,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, title = "Dashboard" }) => 
                 >
                     <Menu size={24} />
                 </button>
-                <h1 className="text-xl font-semibold text-slate-900">{title}</h1>
+                <h1 className="text-xl font-semibold text-slate-900">{pageTitle}</h1>
             </div>
 
             <div className="flex items-center gap-4">

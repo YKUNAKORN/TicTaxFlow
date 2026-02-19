@@ -6,6 +6,8 @@ import type {
   RegisterRequest,
   RegisterResponse,
   LogoutResponse,
+  ChangePasswordRequest,
+  ChangePasswordResponse,
 } from '../types/auth';
 
 export const authApi = {
@@ -42,6 +44,16 @@ export const authApi = {
     });
 
     storage.clearTokens();
+
+    return response;
+  },
+
+  changePassword: async (data: ChangePasswordRequest): Promise<ChangePasswordResponse> => {
+    const response = await apiClient.post<ChangePasswordResponse>(
+      '/auth/change-password',
+      data,
+      { requiresAuth: true }
+    );
 
     return response;
   },

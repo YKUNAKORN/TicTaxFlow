@@ -56,6 +56,15 @@ export default {
           paper: '#FFFFFF',
         }
       },
+      keyframes: {
+        shine: {
+          '0%': { backgroundPosition: '200% center' },
+          '100%': { backgroundPosition: '-200% center' },
+        },
+      },
+      animation: {
+        shine: 'shine 4s linear infinite',
+      },
     },
   },
   plugins: [],

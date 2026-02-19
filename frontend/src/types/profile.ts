@@ -12,3 +12,15 @@ export interface ProfileResponse {
   success: boolean;
   data: UserProfile;
 }
+
+export interface ProfileUpdate {
+  full_name?: string;
+  phone?: string;
+  annual_income?: number;
+}
+
+export interface ProfileUpdateResponse {
+  success: boolean;
+  message: string;
+  data: any;
+}
