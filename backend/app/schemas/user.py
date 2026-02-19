@@ -37,3 +37,8 @@ class LoginResponse(BaseModel):
     user: UserResponse
     access_token: str
     refresh_token: str
+
+class ChangePassword(BaseModel):
+    """Schema for password change."""
+    current_password: str
+    new_password: str

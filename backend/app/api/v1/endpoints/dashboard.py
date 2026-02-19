@@ -21,19 +21,35 @@ async def get_dashboard_summary(user_id: str):
     """
     
     try:
+        print(f"\n{'='*60}")
         print(f"Dashboard API called for user_id: {user_id}")
+        print(f"User ID type: {type(user_id)}")
+        print(f"User ID length: {len(user_id)}")
+        print(f"User ID repr: {repr(user_id)}")
+        print(f"{'='*60}\n")
         
         # Get all transactions for the user, ordered by creation time
         all_transactions = supabase.table("transactions").select(
-            "id, merchant_name, transaction_date, total_amount, deductible_amount, status, create_at, receipt_image_url, rule_id"
+            "id, merchant_name, transaction_date, total_amount, deductible_amount, status, create_at, receipt_image_url, rule_id, user_id"
         ).eq("user_id", user_id).order("create_at", desc=True).execute()
         
         transactions_data = all_transactions.data if all_transactions.data else []
         
-        print(f"Transactions found in database: {len(transactions_data)}")
+        print(f"SUCCESS: Transactions found in database: {len(transactions_data)}")
         
         if transactions_data:
-            print(f"First transaction: {transactions_data[0].get('merchant_name')} - {transactions_data[0].get('create_at')}")
+            first_tx = transactions_data[0]
+            print(f"First transaction details:")
+            print(f"   - Merchant: {first_tx.get('merchant_name')}")
+            print(f"   - Created: {first_tx.get('create_at')}")
+            print(f"   - User ID: {first_tx.get('user_id')}")
+            print(f"   - IDs match: {first_tx.get('user_id') == user_id}")
+        else:
+            print(f"WARNING: No transactions found for user_id: {user_id}")
+            print(f"   This could mean:")
+            print(f"   1. User hasn't uploaded any receipts yet")
+            print(f"   2. User ID mismatch between login and transactions")
+            print(f"   3. Transactions belong to a different user_id")
         
         # Get all tax rules to map categories
         try:

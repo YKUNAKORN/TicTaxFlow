@@ -1,6 +1,8 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import LandingPage from './pages/LandingPage';
+import FeaturesPage from './pages/FeaturesPage';
+import AboutPage from './pages/AboutPage';
 import DashboardPage from './pages/DashboardPage';
 import TransactionsPage from './pages/TransactionsPage';
 import TaxRulesPage from './pages/TaxRulesPage';
@@ -8,6 +10,7 @@ import SignInPage from './pages/SignInPage';
 import SignUpPage from './pages/SignUpPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import AgentPage from './pages/AgentPage';
+import ProfilePage from './pages/ProfilePage';
 
 function App() {
     return (
@@ -15,6 +18,8 @@ function App() {
             <Routes>
                 {/* Landing Page (No Shell) */}
                 <Route path="/" element={<LandingPage />} />
+                <Route path="/features" element={<FeaturesPage />} />
+                <Route path="/about" element={<AboutPage />} />
                 <Route path="/signin" element={<SignInPage />} />
                 <Route path="/signup" element={<SignUpPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -41,6 +46,12 @@ function App() {
                 <Route path="/agent" element={
                     <Layout>
                         <AgentPage />
+                    </Layout>
+                } />
+
+                <Route path="/profile" element={
+                    <Layout>
+                        <ProfilePage />
                     </Layout>
                 } />
 

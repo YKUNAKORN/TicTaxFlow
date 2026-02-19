@@ -237,7 +237,7 @@ def get_user_transactions(user_id: str, status: Optional[str] = None) -> Dict[st
         if status:
             query = query.eq("status", status)
         
-        response = query.order("created_at", desc=True).execute()
+        response = query.order("create_at", desc=True).execute()
         
         return {
             "success": True,
