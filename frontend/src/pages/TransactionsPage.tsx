@@ -115,6 +115,32 @@ const TransactionsPage: React.FC = () => {
     const verifiedCount = summaryData?.status_breakdown?.verified ?? filteredTransactions.filter((tx: any) => tx.status === 'verified').length;
     const pendingCount = summaryData?.status_breakdown?.needs_review ?? filteredTransactions.filter((tx: any) => tx.status === 'needs_review').length;
 
+    // Calculate month-over-month change using the raw transactions list
+    const now = new Date();
+    const curMonth = now.getMonth();
+    const curYear = now.getFullYear();
+    const prevMonth = curMonth === 0 ? 11 : curMonth - 1;
+    const prevYear = curMonth === 0 ? curYear - 1 : curYear;
+
+    const currentMonthTotal = transactions
+        .filter((tx) => {
+            const d = new Date(tx.transaction_date);
+            return d.getMonth() === curMonth && d.getFullYear() === curYear;
+        })
+        .reduce((sum: number, tx) => sum + (tx.total_amount || 0), 0);
+
+    const prevMonthTotal = transactions
+        .filter((tx) => {
+            const d = new Date(tx.transaction_date);
+            return d.getMonth() === prevMonth && d.getFullYear() === prevYear;
+        })
+        .reduce((sum: number, tx) => sum + (tx.total_amount || 0), 0);
+
+    const monthChangePercent: number | null =
+        prevMonthTotal > 0
+            ? ((currentMonthTotal - prevMonthTotal) / prevMonthTotal) * 100
+            : null;
+
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'Verified': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
@@ -202,9 +228,27 @@ const TransactionsPage: React.FC = () => {
                     <div className="relative z-10">
                         <p className="text-sm font-medium text-slate-500 uppercase tracking-wider">Total Expenses</p>
                         <h3 className="text-3xl font-bold text-slate-900 mt-2">฿{totalAmount.toLocaleString()}</h3>
-                        <div className="flex items-center mt-4 text-emerald-600 text-sm font-medium bg-emerald-50 w-fit px-2 py-1 rounded-full">
-                            <ArrowUpRight size={14} className="mr-1" />
-                            <span>+12.5% from last month</span>
+                        <div
+                            className={`flex items-center mt-4 text-sm font-medium w-fit px-2 py-1 rounded-full ${
+                                monthChangePercent === null
+                                    ? 'bg-slate-100 text-slate-500'
+                                    : monthChangePercent >= 0
+                                    ? 'bg-emerald-50 text-emerald-600'
+                                    : 'bg-red-50 text-red-500'
+                            }`}
+                        >
+                            {monthChangePercent !== null ? (
+                                monthChangePercent >= 0 ? (
+                                    <ArrowUpRight size={14} className="mr-1" />
+                                ) : (
+                                    <ArrowDownLeft size={14} className="mr-1" />
+                                )
+                            ) : null}
+                            <span>
+                                {monthChangePercent !== null
+                                    ? `${monthChangePercent >= 0 ? '+' : ''}${monthChangePercent.toFixed(1)}% from last month`
+                                    : 'No data from last month'}
+                            </span>
                         </div>
                     </div>
                 </div>
