@@ -1,12 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Mail, ArrowRight, ArrowLeft } from 'lucide-react';
+import AuthNavbar from '../components/layout/AuthNavbar';
 
 import logo from '../assets/logo-icon.png';
 
 const ForgotPasswordPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+            <AuthNavbar />
             <div className="max-w-md w-full bg-white rounded-2xl shadow-xl overflow-hidden">
                 <div className="p-8">
                     <div className="mb-8 text-center">
