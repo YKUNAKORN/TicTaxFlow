@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import SummaryCards from '../components/Dashboard/SummaryCards';
-import UploadZone from '../components/Dashboard/UploadZone';
-import TransactionsTable from '../components/Dashboard/TransactionsTable';
+import SummaryCards from '../components/dashboard/SummaryCards';
+import UploadZone from '../components/dashboard/UploadZone';
+import TransactionsTable from '../components/dashboard/TransactionsTable';
 import TransactionModal from '../components/Features/TransactionModal';
 import { Transaction, SummaryStat } from '../data/mockData';
 import { dashboardApi } from '../api/dashboard';
