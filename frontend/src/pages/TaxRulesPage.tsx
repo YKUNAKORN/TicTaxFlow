@@ -82,9 +82,6 @@ const TaxRulesPage: React.FC = () => {
         <div className="space-y-8 animate-fade-in">
             {/* Header Section */}
             <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl p-8 text-white shadow-lg relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10">
-                    <BookOpen size={120} className="transform rotate-12 translate-x-8 -translate-y-8" />
-                </div>
                 <div className="relative z-10">
                     <h1 className="text-3xl font-bold mb-2">Tax Rules Library</h1>
                     <p className="text-primary-100 max-w-xl text-lg">

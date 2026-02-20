@@ -90,7 +90,7 @@ const AgentPage: React.FC = () => {
                         <img src={logo} alt="TicTax AI" className="h-8 w-8 object-contain" />
                     </div>
                     <div>
-                        <h2 className="font-bold text-slate-800 text-lg">TicTax AI Agent</h2>
+                        <h2 className="font-bold text-slate-800 text-lg">TicTaxFlow (Chat with agent)</h2>
                         <div className="flex items-center gap-1.5">
                             <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
                             <span className="text-xs text-slate-500 font-medium">Online</span>
