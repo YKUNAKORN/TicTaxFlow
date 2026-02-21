@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from datetime import datetime
 
 from app.database.database import supabase, get_auth_client
-from app.agents.tax_expert import ask_tax_expert
+from app.agents.tax_expert import ask_tax_question
 
 
 router = APIRouter()
@@ -55,7 +55,7 @@ async def chat_with_agent(
         if not request.message or not request.message.strip():
             raise HTTPException(status_code=400, detail="Message cannot be empty")
         
-        response_text = ask_tax_expert(request.message)
+        response_text = ask_tax_question(request.message)
         
         timestamp = datetime.utcnow().isoformat()
         
