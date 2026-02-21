@@ -3,7 +3,7 @@ from typing import TypedDict, Annotated
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 
-from app.agents.inspector import extract_receipt_json, map_category_to_tax_rule
+from app.agents.inspector import extract_receipt_json
 from app.agents.tax_expert import ask_tax_expert, ask_tax_question
 from app.agents.accountant import save_receipt_from_inspector
 
@@ -81,13 +81,16 @@ def accountant_node(state: AgentState) -> AgentState:
     
     receipt_data = state["receipt_data"]
     user_id = state.get("user_id", "demo-user-id")
-    
-    # Auto-detect category from receipt content
-    detected_category = receipt_data.get("category")
-    final_category = map_category_to_tax_rule(detected_category) if detected_category else "Health Insurance"
-    
-    print(f"Detected category: {detected_category} -> Mapped to: {final_category}")
-    
+
+    # Use Tax Expert (RAG) to classify the receipt
+    tax_result = ask_tax_expert(receipt_data)
+    final_category = tax_result.get("category", "None")
+
+    print(f"Tax Expert classification: {final_category}")
+
+    # Store tax advice on the state so later nodes can access it
+    state["tax_advice"] = tax_result
+
     result = save_receipt_from_inspector(
         user_id=user_id,
         receipt_data=receipt_data,
@@ -149,21 +152,16 @@ def tax_expert_node(state: AgentState) -> AgentState:
     """Get tax advice from expert agent."""
     print("Node 4: Tax Expert Agent - Analyzing...")
 
-    receipt_data = state.get("receipt_data")
-
-    # If receipt data exists, run structured analysis and return JSON dict
-    if receipt_data and isinstance(receipt_data, dict) and not receipt_data.get("error"):
-        print("Using structured receipt analysis")
-        result = ask_tax_expert(receipt_data)
-
-        state["tax_advice"] = result
+    # If tax_advice was already set by accountant_node, skip re-analysis
+    if state.get("tax_advice"):
+        print("Tax advice already available from accountant step, skipping.")
         state["messages"].append({
             "role": "assistant",
-            "content": str(result),
+            "content": str(state["tax_advice"]),
         })
         return state
 
-    # Fallback: answer a free-text tax question
+    # Fallback: answer a free-text tax question (no receipt path)
     question = state.get("question", "")
     answer = ask_tax_question(question)
 
