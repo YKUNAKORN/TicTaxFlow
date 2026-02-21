@@ -95,7 +95,8 @@ async def upload_receipt(
             user_id=user_id,
             receipt_data=receipt_data,
             category_name=final_category,
-            receipt_image_url=receipt_url
+            receipt_image_url=receipt_url,
+            tax_result=tax_result
         )
         
         print(f"Save result: {save_result}")
@@ -183,7 +184,8 @@ async def upload_receipt_base64(request: Base64ImageRequest):
             user_id=request.user_id,
             receipt_data=receipt_data,
             category_name=final_category,
-            receipt_image_url=None
+            receipt_image_url=None,
+            tax_result=tax_result
         )
         
         if not save_result.get("success"):
@@ -255,7 +257,8 @@ async def process_receipt_from_path(
             user_id=user_id,
             receipt_data=receipt_data,
             category_name=final_category,
-            receipt_image_url=image_path
+            receipt_image_url=image_path,
+            tax_result=tax_result
         )
         
         if not save_result.get("success"):

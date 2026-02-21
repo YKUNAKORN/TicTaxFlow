@@ -94,7 +94,8 @@ def accountant_node(state: AgentState) -> AgentState:
     result = save_receipt_from_inspector(
         user_id=user_id,
         receipt_data=receipt_data,
-        category_name=final_category
+        category_name=final_category,
+        tax_result=tax_result
     )
     
     state["accountant_result"] = result

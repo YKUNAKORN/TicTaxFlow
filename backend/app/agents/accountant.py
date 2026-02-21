@@ -74,7 +74,8 @@ def insert_transaction(
     total_amount: float,
     category_name: str = "Health Insurance",
     receipt_image_url: Optional[str] = None,
-    status: str = "needs_review"
+    status: str = "needs_review",
+    is_deductible: bool = True
 ) -> Dict[str, Any]:
     """Insert a new transaction into the database.
     
@@ -84,9 +85,10 @@ def insert_transaction(
         merchant_tax_id: Tax ID of the merchant
         transaction_date: Date of transaction (YYYY-MM-DD format)
         total_amount: Total amount of the transaction
-        category_name: Tax category name (default: Health Insurance)
+        category_name: Tax category name from Tax Expert
         receipt_image_url: URL to receipt image in Supabase Storage
         status: Transaction status (default: needs_review)
+        is_deductible: Whether the Tax Expert determined this is deductible
     
     Returns:
         Dict containing success status and transaction data or error message
@@ -94,6 +96,41 @@ def insert_transaction(
     try:
         print(f"insert_transaction called: user_id={user_id}, category={category_name}, amount={total_amount}")
         
+        # If Tax Expert says not deductible, save with zero deduction
+        if not is_deductible:
+            print(f"Tax Expert: not deductible, saving with deductible_amount=0")
+            transaction_data = {
+                "user_id": user_id,
+                "rule_id": None,
+                "receipt_image_url": receipt_image_url,
+                "merchant_name": merchant_name,
+                "merchant_tax_id": merchant_tax_id,
+                "transaction_date": transaction_date,
+                "total_amount": total_amount,
+                "deductible_amount": 0,
+                "status": "not_deductible"
+            }
+
+            # Try to attach a rule_id if the category exists
+            tax_rule = get_tax_rule_by_category(category_name)
+            if tax_rule:
+                transaction_data["rule_id"] = tax_rule["id"]
+
+            response = supabase.table("transactions").insert(transaction_data).execute()
+
+            if response.data:
+                return {
+                    "success": True,
+                    "transaction": response.data[0],
+                    "message": f"Transaction saved as not deductible. Amount: {total_amount:,.2f} THB",
+                    "is_capped": False,
+                    "data": response.data[0]
+                }
+            return {
+                "success": False,
+                "error": "Failed to insert transaction - no data returned"
+            }
+
         tax_rule = get_tax_rule_by_category(category_name)
         
         if not tax_rule:
@@ -256,15 +293,17 @@ def save_receipt_from_inspector(
     user_id: str,
     receipt_data: Dict[str, Any],
     category_name: str = "Health Insurance",
-    receipt_image_url: str = None
+    receipt_image_url: str = None,
+    tax_result: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """Save transaction from Inspector Agent output.
     
     Args:
         user_id: UUID of the user
         receipt_data: Dict containing date, amount, tax_id from Inspector Agent
-        category_name: Tax category (default: Health Insurance)
-        receipt_image_url: URL or path to the receipt image
+        category_name: Tax category from Tax Expert
+        receipt_image_url: URL to the receipt image in Supabase Storage
+        tax_result: Structured output from Tax Expert (is_deductible, category, reasoning)
     
     Returns:
         Dict containing success status and transaction data
@@ -298,6 +337,11 @@ def save_receipt_from_inspector(
         
         print(f"Saving transaction: merchant={merchant_name}, date={transaction_date}, amount={total_amount}, tax_id={merchant_tax_id}")
         
+        # Determine deductibility from Tax Expert result
+        is_deductible = True
+        if tax_result and isinstance(tax_result, dict):
+            is_deductible = tax_result.get("is_deductible", True)
+
         result = insert_transaction(
             user_id=user_id,
             merchant_name=merchant_name,
@@ -306,7 +350,8 @@ def save_receipt_from_inspector(
             total_amount=total_amount,
             category_name=category_name,
             receipt_image_url=receipt_image_url,
-            status="verified"
+            status="verified",
+            is_deductible=is_deductible
         )
         
         return result
