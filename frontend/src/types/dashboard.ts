@@ -8,6 +8,7 @@ export interface StatusBreakdown {
   verified: number;
   needs_review: number;
   rejected: number;
+  not_deductible: number;
 }
 
 export interface RecentTransaction {
@@ -20,6 +21,7 @@ export interface RecentTransaction {
   created_at: string;
   receipt_image_url?: string;
   category?: string;
+  ai_reasoning?: string;
 }
 
 export interface CategoryBreakdown {

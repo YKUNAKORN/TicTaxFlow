@@ -25,8 +25,14 @@ const TransactionsTable: React.FC<TransactionsTableProps> = ({ transactions, onS
                 );
             case 'Needs Review':
                 return (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                        <AlertCircle size={14} className="mr-1" /> Needs Review
+                    </span>
+                );
+            case 'Not Deductible':
+                return (
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                        <AlertCircle size={14} className="mr-1" /> Review
+                        <AlertCircle size={14} className="mr-1" /> Not Deductible
                     </span>
                 );
             default:

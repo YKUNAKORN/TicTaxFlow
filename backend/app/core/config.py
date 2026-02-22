@@ -1,5 +1,6 @@
 """Application configuration and settings."""
 import os
+from datetime import datetime
 from typing import Optional
 from pathlib import Path
 from dotenv import load_dotenv
@@ -36,7 +37,7 @@ class Settings:
     CHROMA_COLLECTION_NAME: str = "document_collection"
     
     # Agent Settings
-    DEFAULT_TAX_YEAR: int = 2025
+    DEFAULT_TAX_YEAR: int = datetime.now().year
     CHUNK_SIZE: int = 1000
     CHUNK_OVERLAP: int = 200
     RAG_N_RESULTS: int = 5
