@@ -56,6 +56,22 @@ def calculate_deductible_amount(total_amount: float, category_name: str) -> Dict
         }
     
     max_limit = tax_rule.get("max_limit", 0.0)
+
+    # Donations with max_limit=0 means income-based limit (use actual amount)
+    if max_limit == 0:
+        category = tax_rule.get("category_name", "")
+        if "Education" in category or "Sports" in category:
+            # Education/Sports donations get 2x deduction
+            deductible = total_amount * 2
+        else:
+            # General donations or other income-based: use actual amount
+            deductible = total_amount
+        return {
+            "amount": deductible,
+            "is_capped": False,
+            "max_limit": max_limit
+        }
+
     deductible = min(total_amount, max_limit)
     is_capped = total_amount > max_limit
     
@@ -75,7 +91,8 @@ def insert_transaction(
     category_name: str = "Health Insurance",
     receipt_image_url: Optional[str] = None,
     status: str = "needs_review",
-    is_deductible: bool = True
+    is_deductible: bool = True,
+    ai_reasoning: Optional[str] = None
 ) -> Dict[str, Any]:
     """Insert a new transaction into the database.
     
@@ -89,6 +106,7 @@ def insert_transaction(
         receipt_image_url: URL to receipt image in Supabase Storage
         status: Transaction status (default: needs_review)
         is_deductible: Whether the Tax Expert determined this is deductible
+        ai_reasoning: Tax Expert's reasoning for the classification
     
     Returns:
         Dict containing success status and transaction data or error message
@@ -108,7 +126,8 @@ def insert_transaction(
                 "transaction_date": transaction_date,
                 "total_amount": total_amount,
                 "deductible_amount": 0,
-                "status": "not_deductible"
+                "status": "not_deductible",
+                "ai_reasoning": ai_reasoning
             }
 
             # Try to attach a rule_id if the category exists
@@ -134,11 +153,34 @@ def insert_transaction(
         tax_rule = get_tax_rule_by_category(category_name)
         
         if not tax_rule:
-            error_msg = f"Tax rule not found for category: {category_name}"
-            print(f"ERROR: {error_msg}")
+            # Tax rule not found in DB - save transaction but flag for review
+            print(f"WARNING: Tax rule not found for category: {category_name}, saving as needs_review")
+            transaction_data = {
+                "user_id": user_id,
+                "rule_id": None,
+                "receipt_image_url": receipt_image_url,
+                "merchant_name": merchant_name,
+                "merchant_tax_id": merchant_tax_id,
+                "transaction_date": transaction_date,
+                "total_amount": total_amount,
+                "deductible_amount": 0,
+                "status": "needs_review",
+                "ai_reasoning": ai_reasoning
+            }
+
+            response = supabase.table("transactions").insert(transaction_data).execute()
+
+            if response.data:
+                return {
+                    "success": True,
+                    "transaction": response.data[0],
+                    "message": f"Transaction saved for review. Category '{category_name}' not found in tax rules.",
+                    "is_capped": False,
+                    "data": response.data[0]
+                }
             return {
                 "success": False,
-                "error": error_msg
+                "error": "Failed to insert transaction - no data returned"
             }
         
         rule_id = tax_rule["id"]
@@ -160,7 +202,8 @@ def insert_transaction(
             "transaction_date": transaction_date,
             "total_amount": total_amount,
             "deductible_amount": deductible_amount,
-            "status": status
+            "status": status,
+            "ai_reasoning": ai_reasoning
         }
         
         print(f"Inserting transaction: {transaction_data}")
@@ -337,10 +380,12 @@ def save_receipt_from_inspector(
         
         print(f"Saving transaction: merchant={merchant_name}, date={transaction_date}, amount={total_amount}, tax_id={merchant_tax_id}")
         
-        # Determine deductibility from Tax Expert result
+        # Determine deductibility and reasoning from Tax Expert result
         is_deductible = True
+        ai_reasoning = None
         if tax_result and isinstance(tax_result, dict):
             is_deductible = tax_result.get("is_deductible", True)
+            ai_reasoning = tax_result.get("reasoning")
 
         result = insert_transaction(
             user_id=user_id,
@@ -351,7 +396,8 @@ def save_receipt_from_inspector(
             category_name=category_name,
             receipt_image_url=receipt_image_url,
             status="verified",
-            is_deductible=is_deductible
+            is_deductible=is_deductible,
+            ai_reasoning=ai_reasoning
         )
         
         return result

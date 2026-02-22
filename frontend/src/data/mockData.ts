@@ -2,10 +2,10 @@ export interface Transaction {
     id: string;
     date: string;
     merchant: string;
-    category: "Insurance" | "Donation" | "Investment" | "Shopping" | "Other";
+    category: string;
     amount: number;
-    status: "Verified" | "Processing" | "Needs Review";
-    receiptUrl: string; // Analyze placeholder
+    status: "Verified" | "Processing" | "Needs Review" | "Not Deductible";
+    receiptUrl: string;
     aiReasoning: string;
     taxId?: string;
 }
