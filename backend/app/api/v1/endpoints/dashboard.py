@@ -30,7 +30,7 @@ async def get_dashboard_summary(user_id: str):
         
         # Get all transactions for the user, ordered by creation time
         all_transactions = supabase.table("transactions").select(
-            "id, merchant_name, transaction_date, total_amount, deductible_amount, status, create_at, receipt_image_url, rule_id, user_id"
+            "id, merchant_name, transaction_date, total_amount, deductible_amount, status, create_at, receipt_image_url, rule_id, user_id, ai_reasoning"
         ).eq("user_id", user_id).order("create_at", desc=True).execute()
         
         transactions_data = all_transactions.data if all_transactions.data else []
@@ -71,7 +71,7 @@ async def get_dashboard_summary(user_id: str):
         )
         
         # Count by status
-        status_counts = {"verified": 0, "needs_review": 0, "rejected": 0}
+        status_counts = {"verified": 0, "needs_review": 0, "rejected": 0, "not_deductible": 0}
         for t in transactions_data:
             status = t.get("status", "needs_review")
             if status in status_counts:
@@ -81,9 +81,12 @@ async def get_dashboard_summary(user_id: str):
         recent_transactions = []
         for tx in transactions_data[:5]:
             rule_id = tx.get("rule_id")
+            status = tx.get("status", "needs_review")
             category_name = "Unknown"
             if rule_id and rule_id in tax_rules_map:
                 category_name = tax_rules_map[rule_id]["category_name"]
+            elif status == "not_deductible":
+                category_name = "Not Deductible"
             
             recent_transactions.append({
                 "id": str(tx.get("id", "")),
@@ -94,7 +97,8 @@ async def get_dashboard_summary(user_id: str):
                 "status": str(tx.get("status", "needs_review")),
                 "created_at": str(tx.get("create_at", "")),
                 "receipt_image_url": str(tx.get("receipt_image_url", "") if tx.get("receipt_image_url") else ""),
-                "category": category_name
+                "category": category_name,
+                "ai_reasoning": str(tx.get("ai_reasoning", "") if tx.get("ai_reasoning") else "")
             })
         
         print(f"Recent transactions to return: {len(recent_transactions)}")

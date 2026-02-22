@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import SummaryCards from '../components/Dashboard/SummaryCards';
-import UploadZone from '../components/Dashboard/UploadZone';
-import TransactionsTable from '../components/Dashboard/TransactionsTable';
+import SummaryCards from '../components/dashboard/SummaryCards';
+import UploadZone from '../components/dashboard/UploadZone';
+import TransactionsTable from '../components/dashboard/TransactionsTable';
 import TransactionModal from '../components/Features/TransactionModal';
 import { Transaction, SummaryStat } from '../data/mockData';
 import { dashboardApi } from '../api/dashboard';
@@ -166,13 +166,15 @@ const DashboardPage: React.FC = () => {
             amount: tx.total_amount,
             status: mapStatus(tx.status),
             receiptUrl: tx.receipt_image_url ? `${API_BASE_URL}${tx.receipt_image_url}` : '',
-            aiReasoning: '',
+            aiReasoning: tx.ai_reasoning || '',
         }));
     };
 
-    const mapStatus = (status: string): 'Verified' | 'Processing' | 'Needs Review' => {
+    const mapStatus = (status: string): 'Verified' | 'Processing' | 'Needs Review' | 'Not Deductible' => {
         if (status === 'verified') return 'Verified';
+        if (status === 'not_deductible') return 'Not Deductible';
         if (status === 'rejected') return 'Needs Review';
+        if (status === 'needs_review') return 'Needs Review';
         return 'Processing';
     };
 
@@ -183,7 +185,9 @@ const DashboardPage: React.FC = () => {
             name,
             used: data.total_deductible,
             limit: data.max_limit,
-            percentage: (data.total_deductible / data.max_limit) * 100,
+            percentage: data.max_limit > 0
+                ? (data.total_deductible / data.max_limit) * 100
+                : (data.total_deductible > 0 ? 100 : 0),
         }));
     };
 
@@ -304,7 +308,7 @@ const DashboardPage: React.FC = () => {
                                         ></div>
                                     </div>
                                     <p className="text-xs text-slate-400 mt-1">
-                                        ฿{category.used.toLocaleString()} used of ฿{category.limit.toLocaleString()}
+                                        ฿{category.used.toLocaleString()} used{category.limit > 0 ? ` of ฿${category.limit.toLocaleString()}` : ' (income-based limit)'}
                                     </p>
                                 </div>
                             ))}

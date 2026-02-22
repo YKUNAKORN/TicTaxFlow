@@ -7,8 +7,9 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from typing import Optional
 from pydantic import BaseModel
 
-from app.agents.inspector import extract_receipt_json, extract_receipt_from_bytes, map_category_to_tax_rule
+from app.agents.inspector import extract_receipt_json, extract_receipt_from_bytes
 from app.agents.accountant import save_receipt_from_inspector
+from app.agents.tax_expert import ask_tax_expert
 
 router = APIRouter()
 
@@ -82,19 +83,20 @@ async def upload_receipt(
                 detail=f"Failed to extract receipt data: {error_msg}"
             )
         
-        # Auto-detect category from receipt content
-        detected_category = receipt_data.get("category")
-        final_category = map_category_to_tax_rule(detected_category) if detected_category else category_name
-        
-        print(f"Detected category: {detected_category} -> Mapped to: {final_category}")
+        # Use Tax Expert (RAG) to classify the receipt
+        tax_result = ask_tax_expert(receipt_data)
+        final_category = tax_result.get("category", "None")
+
+        print(f"Tax Expert classification: {final_category}")
         print(f"Extracted receipt data: {receipt_data}")
-        
+
         # Save to database using Accountant Agent
         save_result = save_receipt_from_inspector(
             user_id=user_id,
             receipt_data=receipt_data,
             category_name=final_category,
-            receipt_image_url=receipt_url
+            receipt_image_url=receipt_url,
+            tax_result=tax_result
         )
         
         print(f"Save result: {save_result}")
@@ -171,18 +173,19 @@ async def upload_receipt_base64(request: Base64ImageRequest):
                 detail=f"Failed to extract receipt data: {error_msg}"
             )
         
-        # Auto-detect category from receipt content
-        detected_category = receipt_data.get("category")
-        final_category = map_category_to_tax_rule(detected_category) if detected_category else request.category_name
-        
-        print(f"Detected category: {detected_category} -> Mapped to: {final_category}")
-        
+        # Use Tax Expert (RAG) to classify the receipt
+        tax_result = ask_tax_expert(receipt_data)
+        final_category = tax_result.get("category", "None")
+
+        print(f"Tax Expert classification: {final_category}")
+
         # Save to database using Accountant Agent
         save_result = save_receipt_from_inspector(
             user_id=request.user_id,
             receipt_data=receipt_data,
             category_name=final_category,
-            receipt_image_url=None
+            receipt_image_url=None,
+            tax_result=tax_result
         )
         
         if not save_result.get("success"):
@@ -243,18 +246,19 @@ async def process_receipt_from_path(
                 detail=f"Failed to extract receipt data: {error_msg}"
             )
         
-        # Auto-detect category from receipt content
-        detected_category = receipt_data.get("category")
-        final_category = map_category_to_tax_rule(detected_category) if detected_category else category_name
-        
-        print(f"Detected category: {detected_category} -> Mapped to: {final_category}")
-        
+        # Use Tax Expert (RAG) to classify the receipt
+        tax_result = ask_tax_expert(receipt_data)
+        final_category = tax_result.get("category", "None")
+
+        print(f"Tax Expert classification: {final_category}")
+
         # Save to database using Accountant Agent
         save_result = save_receipt_from_inspector(
             user_id=user_id,
             receipt_data=receipt_data,
             category_name=final_category,
-            receipt_image_url=image_path
+            receipt_image_url=image_path,
+            tax_result=tax_result
         )
         
         if not save_result.get("success"):
