@@ -1,14 +1,19 @@
 """Dashboard Summary API endpoints."""
-from fastapi import APIRouter, HTTPException
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException
 from typing import Dict, Any
 
 from app.database.database import supabase
+from app.core.security import get_current_user_id
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-@router.get("/summary/{user_id}", summary="Get dashboard summary for a user")
-async def get_dashboard_summary(user_id: str):
+@router.get("/summary", summary="Get dashboard summary for the current user")
+async def get_dashboard_summary(user_id: str = Depends(get_current_user_id)):
     """
     Get comprehensive dashboard summary for a user
     
@@ -21,46 +26,24 @@ async def get_dashboard_summary(user_id: str):
     """
     
     try:
-        print(f"\n{'='*60}")
-        print(f"Dashboard API called for user_id: {user_id}")
-        print(f"User ID type: {type(user_id)}")
-        print(f"User ID length: {len(user_id)}")
-        print(f"User ID repr: {repr(user_id)}")
-        print(f"{'='*60}\n")
-        
         # Get all transactions for the user, ordered by creation time
         all_transactions = supabase.table("transactions").select(
             "id, merchant_name, transaction_date, total_amount, deductible_amount, status, create_at, receipt_image_url, rule_id, user_id, ai_reasoning"
         ).eq("user_id", user_id).order("create_at", desc=True).execute()
-        
+
         transactions_data = all_transactions.data if all_transactions.data else []
-        
-        print(f"SUCCESS: Transactions found in database: {len(transactions_data)}")
-        
-        if transactions_data:
-            first_tx = transactions_data[0]
-            print(f"First transaction details:")
-            print(f"   - Merchant: {first_tx.get('merchant_name')}")
-            print(f"   - Created: {first_tx.get('create_at')}")
-            print(f"   - User ID: {first_tx.get('user_id')}")
-            print(f"   - IDs match: {first_tx.get('user_id') == user_id}")
-        else:
-            print(f"WARNING: No transactions found for user_id: {user_id}")
-            print(f"   This could mean:")
-            print(f"   1. User hasn't uploaded any receipts yet")
-            print(f"   2. User ID mismatch between login and transactions")
-            print(f"   3. Transactions belong to a different user_id")
-        
+
+        logger.debug("Dashboard summary: %d transactions found", len(transactions_data))
+
         # Get all tax rules to map categories
         try:
             tax_rules_response = supabase.table("tax_rules").select(
                 "id, category_name, max_limit"
             ).eq("is_active", True).execute()
-            
+
             tax_rules_map = {rule["id"]: rule for rule in (tax_rules_response.data or [])}
-            print(f"Tax rules loaded: {len(tax_rules_map)}")
         except Exception as e:
-            print(f"Warning: Failed to fetch tax rules: {e}")
+            logger.warning("Failed to fetch tax rules: %s", e)
             tax_rules_map = {}
         
         # Calculate total deductible (verified only)
@@ -101,19 +84,15 @@ async def get_dashboard_summary(user_id: str):
                 "ai_reasoning": str(tx.get("ai_reasoning", "") if tx.get("ai_reasoning") else "")
             })
         
-        print(f"Recent transactions to return: {len(recent_transactions)}")
-        if recent_transactions:
-            print(f"First recent tx: {recent_transactions[0].get('merchant_name')}")
-        
         # Category breakdown
         try:
             transactions_with_rules = supabase.table("transactions").select(
                 "rule_id, deductible_amount"
             ).eq("user_id", user_id).eq("status", "verified").execute()
-            
+
             transactions_with_rules_data = transactions_with_rules.data if transactions_with_rules.data else []
         except Exception as e:
-            print(f"Warning: Failed to fetch transactions with rules: {e}")
+            logger.warning("Failed to fetch transactions with rules: %s", e)
             transactions_with_rules_data = []
         
         category_breakdown = {}
@@ -150,17 +129,15 @@ async def get_dashboard_summary(user_id: str):
         }
         
     except Exception as e:
-        print(f"Error in get_dashboard_summary: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.exception("Error in get_dashboard_summary")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to fetch dashboard summary: {str(e)}"
         )
 
 
-@router.get("/stats/{user_id}", summary="Get quick stats for dashboard cards")
-async def get_dashboard_stats(user_id: str):
+@router.get("/stats", summary="Get quick stats for dashboard cards")
+async def get_dashboard_stats(user_id: str = Depends(get_current_user_id)):
     """
     Get quick statistics for dashboard summary cards
     Optimized for fast loading

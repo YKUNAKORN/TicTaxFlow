@@ -36,6 +36,5 @@ export interface UploadReceiptResponse {
 
 export interface UploadReceiptRequest {
   file: File;
-  user_id: string;
   category_name?: string;
 }

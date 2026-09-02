@@ -39,8 +39,8 @@ const TransactionsPage: React.FC = () => {
     }, []);
 
     const fetchTransactions = async (silent = false) => {
-        const userId = storage.getUserId();
-        if (!userId) {
+        const token = storage.getToken();
+        if (!token) {
             setError('User not logged in');
             setIsLoading(false);
             return;
@@ -54,7 +54,7 @@ const TransactionsPage: React.FC = () => {
         setError('');
 
         try {
-            const response = await transactionsApi.getUserTransactions(userId);
+            const response = await transactionsApi.getUserTransactions();
             if (response.success) {
                 setTransactions(response.transactions || []);
             }
@@ -68,11 +68,11 @@ const TransactionsPage: React.FC = () => {
     };
 
     const fetchSummary = async () => {
-        const userId = storage.getUserId();
-        if (!userId) return;
+        const token = storage.getToken();
+        if (!token) return;
 
         try {
-            const response = await transactionsApi.getSummary(userId);
+            const response = await transactionsApi.getSummary();
             if (response.success) {
                 setSummaryData(response.data);
             }
