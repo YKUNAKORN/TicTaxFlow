@@ -5,16 +5,16 @@ import type {
 } from '../types/dashboard';
 
 export const dashboardApi = {
-  getStats: async (userId: string): Promise<DashboardStatsResponse> => {
+  getStats: async (): Promise<DashboardStatsResponse> => {
     return apiClient.get<DashboardStatsResponse>(
-      `/dashboard/stats/${userId}`,
+      `/dashboard/stats`,
       { requiresAuth: true }
     );
   },
 
-  getSummary: async (userId: string): Promise<DashboardSummaryResponse> => {
+  getSummary: async (): Promise<DashboardSummaryResponse> => {
     return apiClient.get<DashboardSummaryResponse>(
-      `/dashboard/summary/${userId}`,
+      `/dashboard/summary`,
       { requiresAuth: true }
     );
   },

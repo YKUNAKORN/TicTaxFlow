@@ -1,9 +1,10 @@
 """User Profile API endpoints."""
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header
 from typing import Optional
 from pydantic import BaseModel
 
 from app.database.database import supabase, get_auth_client
+from app.core.security import get_current_user_id
 
 router = APIRouter()
 
@@ -24,34 +25,15 @@ class ProfileUpdate(BaseModel):
     annual_income: Optional[float] = None
 
 
-def extract_user_id_from_token(authorization: Optional[str]) -> str:
-    """Extract user ID from JWT token via Supabase Auth."""
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Missing or invalid authorization token")
-    
-    token = authorization.replace("Bearer ", "")
-    
-    try:
-        # Use a fresh client for token validation to avoid polluting the shared client
-        auth_client = get_auth_client()
-        response = auth_client.auth.get_user(token)
-        
-        if not response or not response.user:
-            raise HTTPException(status_code=401, detail="Invalid token")
-        
-        return response.user.id
-    except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
-
-
 @router.get("/me", summary="Get current user profile")
-async def get_my_profile(authorization: Optional[str] = Header(None)):
+async def get_my_profile(
+    authorization: Optional[str] = Header(None),
+    user_id: str = Depends(get_current_user_id)
+):
     """
     Retrieve current authenticated user's profile
     Requires: Authorization header with Bearer token
     """
-    user_id = extract_user_id_from_token(authorization)
-    
     try:
         # Get user metadata from Supabase Auth using a fresh client
         token = authorization.replace("Bearer ", "")
@@ -96,14 +78,12 @@ async def get_my_profile(authorization: Optional[str] = Header(None)):
 @router.put("/me", summary="Update current user profile")
 async def update_my_profile(
     updates: ProfileUpdate,
-    authorization: Optional[str] = Header(None)
+    user_id: str = Depends(get_current_user_id)
 ):
     """
     Update current authenticated user's profile
     Requires: Authorization header with Bearer token
     """
-    user_id = extract_user_id_from_token(authorization)
-    
     try:
         # Build update data
         update_data = updates.model_dump(exclude_unset=True)

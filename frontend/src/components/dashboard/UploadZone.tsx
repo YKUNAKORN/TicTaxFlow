@@ -45,26 +45,25 @@ const UploadZone: React.FC<UploadZoneProps> = ({ onUploadSuccess }) => {
             return;
         }
 
-        const userId = storage.getUserId();
-        if (!userId) {
-            setUploadStatus({ 
-                status: 'error', 
+        const token = storage.getToken();
+        if (!token) {
+            setUploadStatus({
+                status: 'error',
                 message: 'Please log in to upload receipts.',
-                fileName: file.name 
+                fileName: file.name
             });
             return;
         }
 
-        setUploadStatus({ 
-            status: 'uploading', 
+        setUploadStatus({
+            status: 'uploading',
             message: 'Processing receipt...',
-            fileName: file.name 
+            fileName: file.name
         });
 
         try {
             const response = await receiptApi.uploadReceipt({
-                file,
-                user_id: userId
+                file
             });
 
             setUploadStatus({ 

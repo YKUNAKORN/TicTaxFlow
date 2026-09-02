@@ -1,17 +1,13 @@
 """Receipt Upload and Processing API endpoints."""
 import logging
-import os
 import uuid
 import base64
 from pathlib import Path
-from fastapi import APIRouter, HTTPException, UploadFile, File, Form
-from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from pydantic import BaseModel
 
-from app.agents.inspector import extract_receipt_json
-from app.agents.accountant import save_receipt_from_inspector
-from app.agents.tax_expert import ask_tax_expert
 from app.services.workflow import run_receipt_workflow
+from app.core.security import get_current_user_id
 
 logger = logging.getLogger(__name__)
 
@@ -24,15 +20,14 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 class Base64ImageRequest(BaseModel):
     image_base64: str
-    user_id: str
     category_name: str = "Health Insurance"
 
 
 @router.post("/upload", summary="Upload and process receipt image")
 async def upload_receipt(
     file: UploadFile = File(...),
-    user_id: str = Form(...),
-    category_name: str = Form("Health Insurance")
+    category_name: str = Form("Health Insurance"),
+    user_id: str = Depends(get_current_user_id)
 ):
     """
     Upload a receipt image and automatically extract data using AI
@@ -131,21 +126,24 @@ async def upload_receipt(
 
 
 @router.post("/upload-base64", summary="Upload receipt as base64 image")
-async def upload_receipt_base64(request: Base64ImageRequest):
+async def upload_receipt_base64(
+    request: Base64ImageRequest,
+    user_id: str = Depends(get_current_user_id)
+):
     """
     Upload a receipt image as base64 string and process it
-    
+
     Frontend can send image directly from:
     - File reader (FileReader API)
     - Canvas (canvas.toDataURL())
     - Camera capture
-    
+
     Steps:
     1. Decode base64 to bytes
     2. Extract receipt data using Inspector Agent (Gemini Vision)
     3. Save transaction to database using Accountant Agent
     """
-    
+
     try:
         # Remove data URI prefix if present
         # "data:image/jpeg;base64,..." -> "..."
@@ -153,14 +151,14 @@ async def upload_receipt_base64(request: Base64ImageRequest):
             base64_str = request.image_base64.split("base64,")[1]
         else:
             base64_str = request.image_base64
-        
+
         # Decode base64 to bytes
         image_bytes = base64.b64decode(base64_str)
 
         # Run the request through the compiled LangGraph workflow:
         # Inspector -> Validator -> Tax Expert -> Accountant
         result = run_receipt_workflow(
-            user_id=request.user_id,
+            user_id=user_id,
             image_bytes=image_bytes,
         )
 
@@ -205,79 +203,6 @@ async def upload_receipt_base64(request: Base64ImageRequest):
             }
         }
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to process receipt: {str(e)}"
-        )
-
-
-@router.post("/process-image", summary="Process receipt from image path")
-async def process_receipt_from_path(
-    image_path: str = Form(...),
-    user_id: str = Form(...),
-    category_name: str = Form("Health Insurance")
-):
-    """
-    Process a receipt from an existing image path
-    Useful for testing or batch processing
-    """
-    
-    # Check if file exists
-    if not os.path.exists(image_path):
-        raise HTTPException(status_code=404, detail="Image file not found")
-    
-    try:
-        # Extract data using Inspector Agent
-        receipt_data = extract_receipt_json(image_path)
-        
-        if "error" in receipt_data:
-            error_msg = receipt_data.get('error', 'Unknown error')
-            
-            # Provide user-friendly error messages
-            if 'API key not valid' in str(error_msg) or 'API_KEY_INVALID' in str(error_msg):
-                raise HTTPException(
-                    status_code=503,
-                    detail="AI service configuration error. Please contact administrator to set up the API key."
-                )
-            
-            raise HTTPException(
-                status_code=400,
-                detail=f"Failed to extract receipt data: {error_msg}"
-            )
-        
-        # Use Tax Expert (RAG) to classify the receipt
-        tax_result = ask_tax_expert(receipt_data)
-        final_category = tax_result.get("category", "None")
-
-        print(f"Tax Expert classification: {final_category}")
-
-        # Save to database using Accountant Agent
-        save_result = save_receipt_from_inspector(
-            user_id=user_id,
-            receipt_data=receipt_data,
-            category_name=final_category,
-            receipt_image_url=image_path,
-            tax_result=tax_result
-        )
-        
-        if not save_result.get("success"):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Failed to save transaction: {save_result.get('error')}"
-            )
-        
-        return {
-            "success": True,
-            "message": "Receipt processed successfully",
-            "data": {
-                "extracted_data": receipt_data,
-                "transaction": save_result.get("data")
-            }
-        }
-        
     except HTTPException:
         raise
     except Exception as e:

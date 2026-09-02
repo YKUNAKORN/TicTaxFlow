@@ -29,35 +29,16 @@ const DashboardPage: React.FC = () => {
         setError('');
 
         try {
-            const userId = storage.getUserId();
             const token = storage.getToken();
-            
-            console.log('=== Dashboard Data Fetch Debug ===');
-            console.log('User ID from storage:', userId);
-            console.log('User ID length:', userId?.length);
-            console.log('Has token:', !!token);
-            
-            if (!userId) {
-                console.error('ERROR: No user ID found in storage');
+
+            if (!token) {
                 setError('User not logged in');
                 setIsLoading(false);
                 return;
             }
 
-            console.log('Calling API with userId:', userId);
-            const response = await dashboardApi.getSummary(userId);
-            
-            console.log('SUCCESS: Dashboard API response:', response);
-            console.log('Response success:', response.success);
-            console.log('Response data:', response.data);
-            
-            if (response.data) {
-                console.log('Total deductible:', response.data.total_deductible);
-                console.log('Total transactions:', response.data.total_transactions);
-                console.log('Recent transactions count:', response.data.recent_transactions?.length);
-                console.log('Recent transactions:', response.data.recent_transactions);
-            }
-            
+            const response = await dashboardApi.getSummary();
+
             if (response.success) {
                 setSummaryData(response.data);
                 
