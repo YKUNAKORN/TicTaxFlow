@@ -1,10 +1,14 @@
 """User Profile API endpoints."""
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Header
 from typing import Optional
 from pydantic import BaseModel
 
 from app.database.database import supabase, get_auth_client
 from app.core.security import get_current_user_id
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -52,7 +56,7 @@ async def get_my_profile(
             if user_data.data and len(user_data.data) > 0:
                 username = user_data.data[0].get("username", username)
         except Exception as e:
-            print(f"Warning: Could not fetch username from users table: {e}")
+            logger.warning("Could not fetch username from users table: %s", e)
         
         # Build profile response
         profile = {

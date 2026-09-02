@@ -1,15 +1,11 @@
 """Accountant Agent for managing transactions and tax calculations."""
-from datetime import datetime
+import logging
 from typing import Dict, Any, Optional
-from supabase import create_client, Client
 
 from app.core.config import settings
+from app.database.database import supabase
 
-
-if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
-    raise ValueError("Missing SUPABASE_URL or SUPABASE_KEY in environment variables")
-
-supabase: Client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
+logger = logging.getLogger(__name__)
 
 
 def get_tax_rule_by_category(category_name: str, tax_year: int = None) -> Optional[Dict[str, Any]]:
@@ -31,12 +27,12 @@ def get_tax_rule_by_category(category_name: str, tax_year: int = None) -> Option
         ).eq("is_active", True).execute()
         
         if response.data and len(response.data) > 0:
-            print(f"Warning: Using tax rule without year filter for {category_name}")
+            logger.warning("Using tax rule without year filter for %s", category_name)
             return response.data[0]
-        
+
         return None
     except Exception as e:
-        print(f"Error fetching tax rule: {str(e)}")
+        logger.error("Error fetching tax rule: %s", e)
         return None
 
 
@@ -112,11 +108,11 @@ def insert_transaction(
         Dict containing success status and transaction data or error message
     """
     try:
-        print(f"insert_transaction called: user_id={user_id}, category={category_name}, amount={total_amount}")
-        
+        logger.debug("insert_transaction called: category=%s, amount=%s", category_name, total_amount)
+
         # If Tax Expert says not deductible, save with zero deduction
         if not is_deductible:
-            print(f"Tax Expert: not deductible, saving with deductible_amount=0")
+            logger.debug("Tax Expert: not deductible, saving with deductible_amount=0")
             transaction_data = {
                 "user_id": user_id,
                 "rule_id": None,
@@ -154,7 +150,7 @@ def insert_transaction(
         
         if not tax_rule:
             # Tax rule not found in DB - save transaction but flag for review
-            print(f"WARNING: Tax rule not found for category: {category_name}, saving as needs_review")
+            logger.warning("Tax rule not found for category: %s, saving as needs_review", category_name)
             transaction_data = {
                 "user_id": user_id,
                 "rule_id": None,
@@ -184,14 +180,14 @@ def insert_transaction(
             }
         
         rule_id = tax_rule["id"]
-        print(f"Tax rule found: id={rule_id}, category={category_name}")
-        
+        logger.debug("Tax rule found: id=%s, category=%s", rule_id, category_name)
+
         calc_result = calculate_deductible_amount(total_amount, category_name)
         deductible_amount = calc_result["amount"]
         is_capped = calc_result["is_capped"]
         max_limit = calc_result["max_limit"]
-        
-        print(f"Calculated deductible: {deductible_amount} THB (capped: {is_capped})")
+
+        logger.debug("Calculated deductible: %s THB (capped: %s)", deductible_amount, is_capped)
         
         transaction_data = {
             "user_id": user_id,
@@ -206,8 +202,8 @@ def insert_transaction(
             "ai_reasoning": ai_reasoning
         }
         
-        print(f"Inserting transaction: {transaction_data}")
-        
+        logger.debug("Inserting transaction: %s", transaction_data)
+
         response = supabase.table("transactions").insert(transaction_data).execute()
         
         if response.data:
@@ -224,17 +220,15 @@ def insert_transaction(
                 "data": response.data[0]
             }
         else:
-            print("ERROR: Supabase insert returned no data")
+            logger.error("Supabase insert returned no data")
             return {
                 "success": False,
                 "error": "Failed to insert transaction - no data returned"
             }
-            
+
     except Exception as e:
         error_msg = f"Error inserting transaction: {str(e)}"
-        print(f"EXCEPTION in insert_transaction: {error_msg}")
-        import traceback
-        traceback.print_exc()
+        logger.exception("Exception in insert_transaction")
         return {
             "success": False,
             "error": error_msg
@@ -378,14 +372,27 @@ def save_receipt_from_inspector(
                 "error": f"Amount is not a valid number: {total_amount}"
             }
         
-        print(f"Saving transaction: merchant={merchant_name}, date={transaction_date}, amount={total_amount}, tax_id={merchant_tax_id}")
-        
+        logger.debug(
+            "Saving transaction: merchant=%s, date=%s, amount=%s",
+            merchant_name, transaction_date, total_amount,
+        )
+
         # Determine deductibility and reasoning from Tax Expert result
         is_deductible = True
         ai_reasoning = None
         if tax_result and isinstance(tax_result, dict):
             is_deductible = tax_result.get("is_deductible", True)
             ai_reasoning = tax_result.get("reasoning")
+
+        # Auto-verify only when the Tax Expert is confident: is_deductible
+        # True AND a concrete category (not "None"). is_deductible=False is
+        # already routed to status="not_deductible" by insert_transaction
+        # regardless of what we pass here; a "None" category is handled
+        # explicitly rather than relying on get_tax_rule_by_category simply
+        # failing to find a "None" row, since that would silently break if
+        # such a row were ever added. Both cases stay out of
+        # total_deductible_amount until a human confirms them.
+        status = "needs_review" if category_name in (None, "None", "") else "verified"
 
         result = insert_transaction(
             user_id=user_id,
@@ -395,17 +402,15 @@ def save_receipt_from_inspector(
             total_amount=total_amount,
             category_name=category_name,
             receipt_image_url=receipt_image_url,
-            status="verified",
+            status=status,
             is_deductible=is_deductible,
             ai_reasoning=ai_reasoning
         )
-        
+
         return result
-        
+
     except Exception as e:
-        print(f"Exception in save_receipt_from_inspector: {str(e)}")
-        import traceback
-        traceback.print_exc()
+        logger.exception("Exception in save_receipt_from_inspector")
         return {
             "success": False,
             "error": f"Error saving receipt data: {str(e)}"

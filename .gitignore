@@ -220,11 +220,12 @@ __marimo__/
 # data/*.sqlite
 # data/*.sqlite3
 
-# # ChromaDB Vector Store - Large embedding files
-# data/embeddings/
-# **/embeddings/
-# *.chroma
-# chroma.sqlite3
+# ChromaDB Vector Store - Large embedding files, rebuildable from
+# backend/data/documents/*.pdf via `python -m app.services.document_indexer`
+data/embeddings/
+**/embeddings/
+*.chroma
+chroma.sqlite3
 
 # Uploaded receipts - Contains PII (Personal Identifiable Information)
 data/uploads/
