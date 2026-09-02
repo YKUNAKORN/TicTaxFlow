@@ -12,3 +12,4 @@ uvicorn
 pydantic
 email-validator
 python-multipart
+pytest

@@ -1,9 +1,12 @@
 """Accountant Agent for managing transactions and tax calculations."""
+import logging
 from datetime import datetime
 from typing import Dict, Any, Optional
 from supabase import create_client, Client
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 if not settings.SUPABASE_URL or not settings.SUPABASE_KEY:
@@ -40,24 +43,95 @@ def get_tax_rule_by_category(category_name: str, tax_year: int = None) -> Option
         return None
 
 
-def calculate_deductible_amount(total_amount: float, category_name: str) -> Dict[str, Any]:
-    """Calculate deductible amount based on tax rules.
-    
-    Returns:
-        Dict with 'amount', 'is_capped', 'max_limit' keys
+def get_category_used_amount(
+    user_id: str,
+    rule_id: str,
+    exclude_transaction_id: Optional[str] = None
+) -> float:
+    """Sum deductible_amount already counted for this user against a tax rule.
+
+    A tax rule is unique per category_name + tax_year, so filtering by
+    rule_id scopes the sum to "this user + this category + this tax_year"
+    as required by the cumulative cap. Only "verified" transactions count,
+    matching what the dashboard totals (dashboard.py) actually sum.
+
+    exclude_transaction_id lets a transaction being recalculated (e.g. on
+    update) exclude its own prior contribution from the "already used" sum.
     """
-    tax_rule = get_tax_rule_by_category(category_name)
-    
+    try:
+        response = supabase.table("transactions").select(
+            "id, deductible_amount"
+        ).eq("user_id", user_id).eq("rule_id", rule_id).eq("status", "verified").execute()
+
+        rows = response.data or []
+        return sum(
+            float(row.get("deductible_amount", 0) or 0)
+            for row in rows
+            if row.get("id") != exclude_transaction_id
+        )
+    except Exception as e:
+        logger.warning("Failed to fetch already-used deduction for rule_id=%s: %s", rule_id, e)
+        return 0.0
+
+
+def compute_deductible_amount(
+    total_amount: float,
+    max_limit: float,
+    already_used: float = 0.0
+) -> Dict[str, Any]:
+    """Pure cumulative-cap math, isolated from Supabase for unit testing.
+
+    Given how much of a fixed category cap (max_limit) the user has
+    already used across prior verified transactions in the same
+    user + category + tax_year (already_used), compute how much of this
+    new receipt (total_amount) is still deductible without letting the
+    category total exceed max_limit.
+
+    Returns:
+        Dict with 'amount', 'is_capped', 'over_limit', 'max_limit',
+        'already_used', 'remaining_before' keys.
+    """
+    remaining_before = max(0.0, max_limit - already_used)
+    deductible = max(0.0, min(total_amount, remaining_before))
+
+    return {
+        "amount": deductible,
+        "is_capped": deductible < total_amount,
+        "over_limit": already_used >= max_limit and total_amount > 0,
+        "max_limit": max_limit,
+        "already_used": already_used,
+        "remaining_before": remaining_before,
+    }
+
+
+def calculate_deductible_amount(
+    total_amount: float,
+    category_name: str,
+    user_id: Optional[str] = None,
+    tax_year: Optional[int] = None,
+    exclude_transaction_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """Calculate deductible amount based on tax rules, enforcing the
+    cumulative per-user + category + tax_year cap (not a per-receipt cap).
+
+    Returns:
+        Dict with 'amount', 'is_capped', 'max_limit' keys (plus
+        'over_limit', 'already_used', 'remaining_before' when a fixed
+        max_limit applies).
+    """
+    tax_rule = get_tax_rule_by_category(category_name, tax_year)
+
     if not tax_rule:
         return {
             "amount": 0.0,
             "is_capped": False,
             "max_limit": 0.0
         }
-    
+
     max_limit = tax_rule.get("max_limit", 0.0)
 
-    # Donations with max_limit=0 means income-based limit (use actual amount)
+    # Donations with max_limit=0 means income-based limit (use actual amount).
+    # There is no fixed cap to enforce cumulatively here.
     if max_limit == 0:
         category = tax_rule.get("category_name", "")
         if "Education" in category or "Sports" in category:
@@ -72,14 +146,13 @@ def calculate_deductible_amount(total_amount: float, category_name: str) -> Dict
             "max_limit": max_limit
         }
 
-    deductible = min(total_amount, max_limit)
-    is_capped = total_amount > max_limit
-    
-    return {
-        "amount": deductible,
-        "is_capped": is_capped,
-        "max_limit": max_limit
-    }
+    already_used = 0.0
+    if user_id:
+        already_used = get_category_used_amount(
+            user_id, tax_rule["id"], exclude_transaction_id=exclude_transaction_id
+        )
+
+    return compute_deductible_amount(total_amount, max_limit, already_used)
 
 
 def insert_transaction(
@@ -186,12 +259,13 @@ def insert_transaction(
         rule_id = tax_rule["id"]
         print(f"Tax rule found: id={rule_id}, category={category_name}")
         
-        calc_result = calculate_deductible_amount(total_amount, category_name)
+        calc_result = calculate_deductible_amount(total_amount, category_name, user_id=user_id)
         deductible_amount = calc_result["amount"]
         is_capped = calc_result["is_capped"]
+        over_limit = calc_result.get("over_limit", False)
         max_limit = calc_result["max_limit"]
-        
-        print(f"Calculated deductible: {deductible_amount} THB (capped: {is_capped})")
+
+        print(f"Calculated deductible: {deductible_amount} THB (capped: {is_capped}, over_limit: {over_limit})")
         
         transaction_data = {
             "user_id": user_id,
@@ -211,16 +285,19 @@ def insert_transaction(
         response = supabase.table("transactions").insert(transaction_data).execute()
         
         if response.data:
-            if is_capped:
+            if over_limit:
+                message = f"Category already at its {max_limit:,.2f} THB limit. This receipt adds no further deduction."
+            elif is_capped:
                 message = f"Transaction saved. Amount: {total_amount:,.2f} THB, Deductible: {deductible_amount:,.2f} THB (capped at {max_limit:,.2f} THB limit)"
             else:
                 message = f"Transaction saved. Deductible amount: {deductible_amount:,.2f} THB"
-            
+
             return {
                 "success": True,
                 "transaction": response.data[0],
                 "message": message,
                 "is_capped": is_capped,
+                "over_limit": over_limit,
                 "data": response.data[0]
             }
         else:
@@ -257,16 +334,20 @@ def update_transaction(
     try:
         recalculated = False
         if "total_amount" in updates:
-            current = supabase.table("transactions").select("rule_id").eq("id", transaction_id).execute()
-            
+            current = supabase.table("transactions").select("rule_id, user_id").eq("id", transaction_id).execute()
+
             if current.data:
                 rule = supabase.table("tax_rules").select("category_name").eq("id", current.data[0]["rule_id"]).execute()
-                
+
                 if rule.data:
                     category_name = rule.data[0]["category_name"]
                     calc_result = calculate_deductible_amount(
                         updates["total_amount"],
-                        category_name
+                        category_name,
+                        user_id=current.data[0]["user_id"],
+                        # Exclude this transaction's own prior deductible_amount
+                        # from the "already used" sum so it isn't capped against itself.
+                        exclude_transaction_id=transaction_id
                     )
                     updates["deductible_amount"] = calc_result["amount"]
                     recalculated = True

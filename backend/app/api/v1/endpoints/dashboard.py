@@ -108,13 +108,19 @@ async def get_dashboard_summary(user_id: str = Depends(get_current_user_id)):
                     category_breakdown[category_name] = {
                         "total_deductible": 0,
                         "max_limit": max_limit,
-                        "remaining": max_limit
+                        "remaining": max_limit,
+                        "is_capped": False
                     }
-                
+
                 category_breakdown[category_name]["total_deductible"] += deductible
                 category_breakdown[category_name]["remaining"] = max(
-                    0, 
+                    0,
                     max_limit - category_breakdown[category_name]["total_deductible"]
+                )
+                # max_limit == 0 means an income-based cap (e.g. donations), not a fixed one.
+                category_breakdown[category_name]["is_capped"] = (
+                    max_limit > 0
+                    and category_breakdown[category_name]["total_deductible"] >= max_limit
                 )
         
         return {
