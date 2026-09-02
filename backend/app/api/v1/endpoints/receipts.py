@@ -1,4 +1,5 @@
 """Receipt Upload and Processing API endpoints."""
+import logging
 import os
 import uuid
 import base64
@@ -7,9 +8,12 @@ from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from typing import Optional
 from pydantic import BaseModel
 
-from app.agents.inspector import extract_receipt_json, extract_receipt_from_bytes
+from app.agents.inspector import extract_receipt_json
 from app.agents.accountant import save_receipt_from_inspector
 from app.agents.tax_expert import ask_tax_expert
+from app.services.workflow import run_receipt_workflow
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -59,56 +63,54 @@ async def upload_receipt(
         with open(file_path, "wb") as f:
             content = await file.read()
             f.write(content)
-        
-        print(f"File saved to: {file_path}")
-        
+
+        logger.info(f"File saved to: {file_path}")
+
         # Generate URL for serving the image
         receipt_url = f"/receipts/{unique_filename}"
-        
-        # Extract data using Inspector Agent
-        receipt_data = extract_receipt_json(str(file_path))
-        
-        if "error" in receipt_data:
+
+        # Run the request through the compiled LangGraph workflow:
+        # Inspector -> Validator -> Tax Expert -> Accountant
+        result = run_receipt_workflow(
+            user_id=user_id,
+            image_path=str(file_path),
+            image_url=receipt_url,
+        )
+
+        receipt_data = result.get("receipt_data", {})
+
+        if receipt_data.get("error"):
             error_msg = receipt_data.get('error', 'Unknown error')
-            
+
             # Provide user-friendly error messages
             if 'API key not valid' in str(error_msg) or 'API_KEY_INVALID' in str(error_msg):
                 raise HTTPException(
                     status_code=503,
                     detail="AI service configuration error. Please contact administrator to set up the API key."
                 )
-            
+
             raise HTTPException(
                 status_code=400,
                 detail=f"Failed to extract receipt data: {error_msg}"
             )
-        
-        # Use Tax Expert (RAG) to classify the receipt
-        tax_result = ask_tax_expert(receipt_data)
-        final_category = tax_result.get("category", "None")
 
-        print(f"Tax Expert classification: {final_category}")
-        print(f"Extracted receipt data: {receipt_data}")
+        if result.get("status") == "awaiting_user_input":
+            missing_fields = result.get("missing_fields", [])
+            raise HTTPException(
+                status_code=400,
+                detail=f"Missing required fields in receipt: {', '.join(missing_fields)}"
+            )
 
-        # Save to database using Accountant Agent
-        save_result = save_receipt_from_inspector(
-            user_id=user_id,
-            receipt_data=receipt_data,
-            category_name=final_category,
-            receipt_image_url=receipt_url,
-            tax_result=tax_result
-        )
-        
-        print(f"Save result: {save_result}")
-        
+        save_result = result.get("accountant_result", {})
+
         if not save_result.get("success"):
             error_detail = save_result.get('error', 'Unknown error')
-            print(f"Failed to save transaction: {error_detail}")
+            logger.warning(f"Failed to save transaction: {error_detail}")
             raise HTTPException(
                 status_code=400,
                 detail=f"Failed to save transaction: {error_detail}"
             )
-        
+
         return {
             "success": True,
             "message": "Receipt processed successfully",
@@ -118,7 +120,7 @@ async def upload_receipt(
                 "transaction": save_result.get("data")
             }
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -154,46 +156,46 @@ async def upload_receipt_base64(request: Base64ImageRequest):
         
         # Decode base64 to bytes
         image_bytes = base64.b64decode(base64_str)
-        
-        # Extract data using Inspector Agent with bytes
-        receipt_data = extract_receipt_from_bytes(image_bytes)
-        
-        if "error" in receipt_data:
+
+        # Run the request through the compiled LangGraph workflow:
+        # Inspector -> Validator -> Tax Expert -> Accountant
+        result = run_receipt_workflow(
+            user_id=request.user_id,
+            image_bytes=image_bytes,
+        )
+
+        receipt_data = result.get("receipt_data", {})
+
+        if receipt_data.get("error"):
             error_msg = receipt_data.get('error', 'Unknown error')
-            
+
             # Provide user-friendly error messages
             if 'API key not valid' in str(error_msg) or 'API_KEY_INVALID' in str(error_msg):
                 raise HTTPException(
                     status_code=503,
                     detail="AI service configuration error. Please contact administrator to set up the API key."
                 )
-            
+
             raise HTTPException(
                 status_code=400,
                 detail=f"Failed to extract receipt data: {error_msg}"
             )
-        
-        # Use Tax Expert (RAG) to classify the receipt
-        tax_result = ask_tax_expert(receipt_data)
-        final_category = tax_result.get("category", "None")
 
-        print(f"Tax Expert classification: {final_category}")
+        if result.get("status") == "awaiting_user_input":
+            missing_fields = result.get("missing_fields", [])
+            raise HTTPException(
+                status_code=400,
+                detail=f"Missing required fields in receipt: {', '.join(missing_fields)}"
+            )
 
-        # Save to database using Accountant Agent
-        save_result = save_receipt_from_inspector(
-            user_id=request.user_id,
-            receipt_data=receipt_data,
-            category_name=final_category,
-            receipt_image_url=None,
-            tax_result=tax_result
-        )
-        
+        save_result = result.get("accountant_result", {})
+
         if not save_result.get("success"):
             raise HTTPException(
                 status_code=400,
                 detail=f"Failed to save transaction: {save_result.get('error')}"
             )
-        
+
         return {
             "success": True,
             "message": "Receipt processed successfully",
@@ -202,7 +204,7 @@ async def upload_receipt_base64(request: Base64ImageRequest):
                 "transaction": save_result.get("data")
             }
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:

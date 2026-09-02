@@ -1,17 +1,23 @@
 """Workflow orchestration for the tax assistant multi-agent system."""
-from typing import TypedDict, Annotated
+import logging
+from typing import TypedDict, Annotated, Optional
+
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 
-from app.agents.inspector import extract_receipt_json
+from app.agents.inspector import extract_receipt_json, extract_receipt_from_bytes
 from app.agents.tax_expert import ask_tax_expert, ask_tax_question
 from app.agents.accountant import save_receipt_from_inspector
+
+logger = logging.getLogger(__name__)
 
 
 class AgentState(TypedDict):
     """State for the tax assistant workflow."""
     question: str
     image_path: str
+    image_bytes: bytes
+    image_url: str
     receipt_data: dict
     tax_analysis: dict
     tax_advice: str
@@ -29,7 +35,7 @@ class AgentState(TypedDict):
 
 def should_inspect_receipt(state: AgentState) -> str:
     """Decide if we need to inspect a receipt image."""
-    if state.get("image_path"):
+    if state.get("image_path") or state.get("image_bytes"):
         return "inspect"
     return "tax_question"
 
@@ -40,10 +46,13 @@ def should_inspect_receipt(state: AgentState) -> str:
 
 def inspect_receipt_node(state: AgentState) -> AgentState:
     """Extract raw data from receipt image via Gemini Vision."""
-    print("Node 1: Inspector Agent - Analyzing receipt...")
+    logger.info("Node 1: Inspector - analyzing receipt")
 
-    image_path = state["image_path"]
-    receipt_data = extract_receipt_json(image_path)
+    image_bytes = state.get("image_bytes")
+    if image_bytes:
+        receipt_data = extract_receipt_from_bytes(image_bytes)
+    else:
+        receipt_data = extract_receipt_json(state["image_path"])
 
     state["receipt_data"] = receipt_data
     state["messages"].append({
@@ -51,9 +60,10 @@ def inspect_receipt_node(state: AgentState) -> AgentState:
         "content": f"Receipt extracted: {receipt_data}"
     })
 
-    print(f"Extracted: date={receipt_data.get('date')}, "
-          f"amount={receipt_data.get('amount')}, "
-          f"tax_id={receipt_data.get('tax_id')}")
+    logger.info(
+        "Node 1: Inspector - extracted date=%s amount=%s tax_id=%s",
+        receipt_data.get("date"), receipt_data.get("amount"), receipt_data.get("tax_id"),
+    )
 
     return state
 
@@ -67,7 +77,7 @@ def validate_receipt_data(state: AgentState) -> str:
     receipt_data = state.get("receipt_data", {})
 
     if receipt_data.get("error"):
-        print("Validation: Receipt has extraction error -> Human input needed")
+        logger.info("Node 2: Validator - extraction error, routing to human_input")
         return "human_input"
 
     date = receipt_data.get("date")
@@ -75,7 +85,7 @@ def validate_receipt_data(state: AgentState) -> str:
     tax_id = receipt_data.get("tax_id")
 
     if date and amount and tax_id:
-        print("Validation: Data complete -> Proceed to Tax Expert")
+        logger.info("Node 2: Validator - data complete, routing to tax_expert")
         return "tax_expert"
 
     missing = []
@@ -86,7 +96,7 @@ def validate_receipt_data(state: AgentState) -> str:
     if not tax_id:
         missing.append("tax_id")
 
-    print(f"Validation: Missing fields: {', '.join(missing)} -> Human input needed")
+    logger.info("Node 2: Validator - missing fields %s, routing to human_input", missing)
     return "human_input"
 
 
@@ -96,7 +106,7 @@ def validate_receipt_data(state: AgentState) -> str:
 
 def tax_expert_node(state: AgentState) -> AgentState:
     """Classify receipt via RAG and store structured result."""
-    print("Node 3: Tax Expert Agent - Classifying receipt...")
+    logger.info("Node 3: Tax Expert - classifying receipt")
 
     receipt_data = state["receipt_data"]
     tax_analysis = ask_tax_expert(receipt_data)
@@ -107,8 +117,10 @@ def tax_expert_node(state: AgentState) -> AgentState:
         "content": f"Tax analysis: {tax_analysis}"
     })
 
-    print(f"Tax Expert result: is_deductible={tax_analysis.get('is_deductible')}, "
-          f"category={tax_analysis.get('category')}")
+    logger.info(
+        "Node 3: Tax Expert - is_deductible=%s category=%s",
+        tax_analysis.get("is_deductible"), tax_analysis.get("category"),
+    )
 
     return state
 
@@ -119,19 +131,20 @@ def tax_expert_node(state: AgentState) -> AgentState:
 
 def accountant_node(state: AgentState) -> AgentState:
     """Save transaction to database using receipt data + tax analysis."""
-    print("Node 4: Accountant Agent - Saving transaction...")
+    logger.info("Node 4: Accountant - saving transaction")
 
     receipt_data = state["receipt_data"]
     tax_analysis = state.get("tax_analysis", {})
     user_id = state.get("user_id", "demo-user-id")
 
     final_category = tax_analysis.get("category", "None")
-    print(f"Saving with category: {final_category}")
+    logger.info("Node 4: Accountant - saving with category=%s", final_category)
 
     result = save_receipt_from_inspector(
         user_id=user_id,
         receipt_data=receipt_data,
         category_name=final_category,
+        receipt_image_url=state.get("image_url"),
         tax_result=tax_analysis,
     )
 
@@ -141,14 +154,14 @@ def accountant_node(state: AgentState) -> AgentState:
     if result.get("success"):
         transaction = result.get("transaction", {})
         deductible = transaction.get("deductible_amount", 0)
-        print(f"Transaction saved! Deductible: {deductible} THB")
+        logger.info("Node 4: Accountant - transaction saved, deductible=%s THB", deductible)
         state["messages"].append({
             "role": "system",
             "content": f"Transaction saved. Deductible: {deductible} THB"
         })
     else:
         error_msg = result.get("error", "Unknown error")
-        print(f"Failed to save transaction: {error_msg}")
+        logger.warning("Node 4: Accountant - failed to save transaction: %s", error_msg)
         state["messages"].append({
             "role": "system",
             "content": f"Error saving transaction: {error_msg}"
@@ -163,7 +176,7 @@ def accountant_node(state: AgentState) -> AgentState:
 
 def human_input_node(state: AgentState) -> AgentState:
     """Flag incomplete data so the API can return a form request."""
-    print("Human-in-the-loop: Incomplete receipt data detected")
+    logger.info("Node: Human Input - incomplete receipt data detected")
 
     receipt_data = state.get("receipt_data", {})
     missing = []
@@ -183,7 +196,7 @@ def human_input_node(state: AgentState) -> AgentState:
         "content": f"Missing fields: {', '.join(missing)}. Awaiting user input."
     })
 
-    print(f"Status set to awaiting_user_input. Missing: {', '.join(missing)}")
+    logger.info("Node: Human Input - status=awaiting_user_input missing=%s", missing)
 
     return state
 
@@ -194,7 +207,7 @@ def human_input_node(state: AgentState) -> AgentState:
 
 def tax_question_node(state: AgentState) -> AgentState:
     """Answer a free-text tax question using RAG."""
-    print("Tax Q&A: Answering question...")
+    logger.info("Node: Tax Q&A - answering question")
 
     question = state.get("question", "")
     answer = ask_tax_question(question)
@@ -262,11 +275,49 @@ def build_workflow():
 
 
 # ---------------------------------------------------------------------------
+# Compiled graph singleton
+# ---------------------------------------------------------------------------
+# Compiled exactly once, at module import time (i.e. application startup),
+# and reused for every request. Never call build_workflow() per request.
+compiled_graph = build_workflow()
+logger.info("LangGraph workflow compiled (nodes: inspect, tax_expert, accountant, human_input, tax_question)")
+
+
+# ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
 
+def run_receipt_workflow(
+    user_id: str,
+    image_path: Optional[str] = None,
+    image_bytes: Optional[bytes] = None,
+    image_url: Optional[str] = None,
+) -> AgentState:
+    """Run a receipt upload through the compiled graph.
+
+    Used by the /receipts endpoints so every upload flows through
+    Inspector -> Validator -> Tax Expert -> Accountant.
+    """
+    initial_state = {
+        "question": "",
+        "image_path": image_path,
+        "image_bytes": image_bytes,
+        "image_url": image_url,
+        "receipt_data": {},
+        "tax_analysis": {},
+        "tax_advice": "",
+        "needs_human_input": False,
+        "missing_fields": [],
+        "status": "",
+        "accountant_result": {},
+        "user_id": user_id,
+        "messages": [],
+    }
+    return compiled_graph.invoke(initial_state)
+
+
 def run_tax_assistant(question: str, image_path: str = None, user_id: str = "demo-user-id"):
-    """Run the tax assistant workflow."""
+    """Run the tax assistant workflow (CLI/demo entry point)."""
     print("=" * 60)
     print("TicTaxFlow AI Assistant")
     print("=" * 60)
@@ -274,6 +325,8 @@ def run_tax_assistant(question: str, image_path: str = None, user_id: str = "dem
     initial_state = {
         "question": question,
         "image_path": image_path,
+        "image_bytes": None,
+        "image_url": None,
         "receipt_data": {},
         "tax_analysis": {},
         "tax_advice": "",
@@ -285,8 +338,7 @@ def run_tax_assistant(question: str, image_path: str = None, user_id: str = "dem
         "messages": [{"role": "user", "content": question}],
     }
 
-    app = build_workflow()
-    result = app.invoke(initial_state)
+    result = compiled_graph.invoke(initial_state)
 
     print("\n" + "=" * 60)
     print("Result:")

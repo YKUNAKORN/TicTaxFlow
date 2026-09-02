@@ -1,13 +1,37 @@
+import logging
+
+# Configure logging before importing app modules, so the module-level
+# workflow compilation below (and every node's per-request log line) is
+# actually visible instead of being dropped by the default WARNING root level.
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from app.api.v1.router import api_router
+from app.services.workflow import compiled_graph
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # `compiled_graph` was already compiled once at import time (module-level
+    # singleton in app/services/workflow.py). Referencing it here just makes
+    # that startup-time compilation explicit and confirms it's ready before
+    # the app starts serving requests.
+    logger.info("LangGraph workflow ready: %s", compiled_graph)
+    yield
+
 
 app = FastAPI(
     title="TicTaxFlow API",
     description="Tax management system with AI agents",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 # CORS middleware
