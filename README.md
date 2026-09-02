@@ -7,7 +7,7 @@ TicTaxFlow - AI Agent for Tax Deduction Management System
 ## **Core Features**
 
 1. Upload & Extract:
-    - User upload file (JPG/PDF)
+    - User upload file (JPG, PNG, WEBP, or PDF)
     - AI fetch the data: `Date`, `Amount`, `Issuer Name`, `Tax ID` then display the result
 2. Auto-Classification:
     - AI define detail in invoice such as Life Insurance, Donation, Easy - E-Receipt

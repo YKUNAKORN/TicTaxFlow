@@ -10,6 +10,36 @@ from app.core.config import settings
 
 genai_client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
+# Formats Gemini can actually analyze here, keyed to the magic bytes that
+# identify them. Keep this in sync with receipts.py's upload validation.
+SUPPORTED_MIME_TYPES = {"image/jpeg", "image/png", "image/webp", "application/pdf"}
+
+EXTENSION_FOR_MIME_TYPE = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "application/pdf": "pdf",
+}
+
+
+def detect_mime_type(data: bytes) -> str:
+    """Detect a file's real MIME type from its magic bytes.
+
+    Trusting a client-supplied filename/Content-Type is not enough: Gemini
+    needs an accurate mime_type to decode inline file data, and a mislabeled
+    file (e.g. a PNG uploaded as "photo.jpg") would otherwise be sent to
+    Gemini as the wrong type and silently misbehave.
+    """
+    if data[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp"
+    if data[:5] == b"%PDF-":
+        return "application/pdf"
+    return "application/octet-stream"
+
 
 def load_image(image_path):
     """Load image file and return as bytes."""
@@ -21,8 +51,9 @@ def load_image(image_path):
         return None
 
 
-def extract_receipt_from_bytes(image_data: bytes):
-    """Extract receipt data from image bytes (supports base64)."""
+def extract_receipt_from_bytes(image_data: bytes, mime_type: str = None):
+    """Extract receipt data from file bytes (supports base64)."""
+    mime_type = mime_type or detect_mime_type(image_data)
     prompt = """Analyze this receipt or e-Tax invoice image and extract the following information.
 Return ONLY a valid JSON object with these exact fields:
 
@@ -50,12 +81,12 @@ JSON:"""
             contents=[
                 types.Part.from_bytes(
                     data=image_data,
-                    mime_type="image/jpeg"
+                    mime_type=mime_type
                 ),
                 prompt
             ]
         )
-        
+
         response_text = response.text.strip()
         
         # Remove markdown code blocks if present
@@ -84,13 +115,13 @@ JSON:"""
 def extract_receipt_json(image_path):
     """Extract receipt data as JSON structure from file path."""
     print(f"Extracting data from: {image_path}")
-    
+
     image_data = load_image(image_path)
-    
+
     if image_data is None:
         return {"error": "Failed to load image"}
-    
-    return extract_receipt_from_bytes(image_data)
+
+    return extract_receipt_from_bytes(image_data, mime_type=detect_mime_type(image_data))
 
 
 def build_inspector_prompt():
@@ -126,21 +157,21 @@ def inspect_document(image_path, custom_prompt=None):
         return "Failed to load image."
     
     prompt = custom_prompt if custom_prompt else build_inspector_prompt()
-    
+
     try:
         response = genai_client.models.generate_content(
             model=settings.GEMINI_MODEL,
             contents=[
                 types.Part.from_bytes(
                     data=image_data,
-                    mime_type="image/jpeg"
+                    mime_type=detect_mime_type(image_data)
                 ),
                 prompt
             ]
         )
-        
+
         return response.text
-    
+
     except Exception as e:
         print(f"Error analyzing image: {e}")
         return f"Error: {str(e)}"
@@ -154,7 +185,7 @@ def inspect_receipt_batch(image_folder):
         print(f"Folder not found: {image_folder}")
         return []
     
-    image_extensions = [".jpg", ".jpeg", ".png", ".webp"]
+    image_extensions = [".jpg", ".jpeg", ".png", ".webp", ".pdf"]
     results = []
     
     for image_file in folder_path.iterdir():
@@ -188,14 +219,14 @@ If amount is not clear, return "Amount not found"."""
             contents=[
                 types.Part.from_bytes(
                     data=image_data,
-                    mime_type="image/jpeg"
+                    mime_type=detect_mime_type(image_data)
                 ),
                 prompt
             ]
         )
-        
+
         return response.text.strip()
-    
+
     except Exception as e:
         print(f"Error extracting amount: {e}")
         return f"Error: {str(e)}"
@@ -209,7 +240,7 @@ def extract_receipts_batch_json(image_folder):
         print(f"Folder not found: {image_folder}")
         return []
     
-    image_extensions = [".jpg", ".jpeg", ".png", ".webp"]
+    image_extensions = [".jpg", ".jpeg", ".png", ".webp", ".pdf"]
     results = []
     
     for image_file in folder_path.iterdir():

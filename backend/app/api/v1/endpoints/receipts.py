@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from app.services.workflow import run_receipt_workflow
 from app.core.security import get_current_user_id
+from app.agents.inspector import SUPPORTED_MIME_TYPES, EXTENSION_FOR_MIME_TYPE, detect_mime_type
 
 logger = logging.getLogger(__name__)
 
@@ -40,23 +41,34 @@ async def upload_receipt(
     Returns: Extracted data and transaction details
     """
     
-    # Validate file type
-    allowed_types = ["image/jpeg", "image/jpg", "image/png", "image/webp"]
-    if file.content_type not in allowed_types:
+    # Reject obviously wrong types early from the client-declared Content-Type
+    if file.content_type not in SUPPORTED_MIME_TYPES:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid file type. Allowed: {', '.join(allowed_types)}"
+            detail=f"Invalid file type. Allowed: {', '.join(sorted(SUPPORTED_MIME_TYPES))}"
         )
-    
+
     try:
-        # Generate unique filename
-        file_extension = file.filename.split(".")[-1]
-        unique_filename = f"{uuid.uuid4()}.{file_extension}"
+        content = await file.read()
+
+        # A client-declared Content-Type can lie or be wrong (e.g. a PNG
+        # saved with a .jpg name); trust the file's actual magic bytes for
+        # what we save on disk and send to Gemini.
+        mime_type = detect_mime_type(content)
+        if mime_type not in SUPPORTED_MIME_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File content does not match a supported format. Allowed: {', '.join(sorted(SUPPORTED_MIME_TYPES))}"
+            )
+
+        # Generate unique filename with the extension matching the real
+        # content, so the /receipts static file server reports the correct
+        # Content-Type when the frontend displays it.
+        unique_filename = f"{uuid.uuid4()}.{EXTENSION_FOR_MIME_TYPE[mime_type]}"
         file_path = UPLOAD_DIR / unique_filename
-        
+
         # Save file to disk
         with open(file_path, "wb") as f:
-            content = await file.read()
             f.write(content)
 
         logger.info(f"File saved to: {file_path}")
@@ -154,6 +166,13 @@ async def upload_receipt_base64(
 
         # Decode base64 to bytes
         image_bytes = base64.b64decode(base64_str)
+
+        mime_type = detect_mime_type(image_bytes)
+        if mime_type not in SUPPORTED_MIME_TYPES:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file format. Allowed: {', '.join(sorted(SUPPORTED_MIME_TYPES))}"
+            )
 
         # Run the request through the compiled LangGraph workflow:
         # Inspector -> Validator -> Tax Expert -> Accountant
