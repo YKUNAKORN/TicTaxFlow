@@ -1,52 +1,27 @@
 """Tax Expert Agent for analyzing receipt deductibility using RAG."""
 import json
+import logging
 import time
 from datetime import datetime
 from typing import Dict, Any
 
-import chromadb
 from google import genai
 
 from app.core.config import settings
+from app.services.retrieval import retrieve_context
 
 MAX_RETRIES = 3
 RETRY_BASE_DELAY = 3  # seconds
 
+logger = logging.getLogger(__name__)
 
 genai_client = genai.Client(api_key=settings.GEMINI_API_KEY)
-
-chroma_client = chromadb.PersistentClient(path=str(settings.EMBEDDINGS_DIR))
-collection = chroma_client.get_or_create_collection(name=settings.CHROMA_COLLECTION_NAME)
 
 DEFAULT_RESULT: Dict[str, Any] = {
     "is_deductible": False,
     "category": "None",
     "reasoning": "",
 }
-
-
-def retrieve_context(query: str, n_results: int = None) -> list:
-    """Retrieve relevant context from vector database."""
-    if n_results is None:
-        n_results = settings.RAG_N_RESULTS
-
-    try:
-        results = collection.query(
-            query_texts=[query],
-            n_results=n_results
-        )
-
-        if results.get("documents"):
-            chunks = []
-            for doc_list in results["documents"]:
-                chunks.extend(doc_list)
-            return chunks
-
-        return []
-
-    except Exception as e:
-        print(f"Error retrieving context: {e}")
-        return []
 
 
 def build_tax_expert_prompt(receipt_data: Dict[str, Any], context: str) -> str:
@@ -166,7 +141,7 @@ def ask_tax_expert(receipt_data: Dict[str, Any]) -> Dict[str, Any]:
     else:
         queries.append("Easy E-Receipt ใบกำกับภาษีอิเล็กทรอนิกส์ e-Tax Invoice ซื้อสินค้า")
 
-    print(f"Tax Expert RAG queries: {queries}")
+    logger.debug("Tax Expert RAG queries: %s", queries)
 
     # Retrieve context from all queries and deduplicate
     all_chunks = []
@@ -185,7 +160,7 @@ def ask_tax_expert(receipt_data: Dict[str, Any]) -> Dict[str, Any]:
             "reasoning": "No relevant tax rules found in the knowledge base.",
         }
 
-    print(f"Found {len(all_chunks)} unique context chunks")
+    logger.debug("Found %d unique context chunks", len(all_chunks))
 
     context = "\n\n".join(all_chunks)
     prompt = build_tax_expert_prompt(receipt_data, context)
@@ -200,8 +175,8 @@ def ask_tax_expert(receipt_data: Dict[str, Any]) -> Dict[str, Any]:
             return _parse_json_response(response.text)
 
         except json.JSONDecodeError as e:
-            print(f"Failed to parse JSON from Gemini response: {e}")
-            print(f"Raw response: {response.text}")
+            logger.error("Failed to parse JSON from Gemini response: %s", e)
+            logger.debug("Raw response: %s", response.text)
             return {
                 **DEFAULT_RESULT,
                 "reasoning": "Failed to parse tax analysis response.",
@@ -209,10 +184,10 @@ def ask_tax_expert(receipt_data: Dict[str, Any]) -> Dict[str, Any]:
         except Exception as e:
             if "429" in str(e) and attempt < MAX_RETRIES - 1:
                 delay = RETRY_BASE_DELAY * (2 ** attempt)
-                print(f"Rate limited, retrying in {delay}s (attempt {attempt + 1}/{MAX_RETRIES})")
+                logger.warning("Rate limited, retrying in %ss (attempt %d/%d)", delay, attempt + 1, MAX_RETRIES)
                 time.sleep(delay)
                 continue
-            print(f"Error generating response: {e}")
+            logger.error("Error generating response: %s", e)
             return {
                 **DEFAULT_RESULT,
                 "reasoning": "An error occurred during tax analysis.",
@@ -224,14 +199,14 @@ def ask_tax_question(question: str) -> str:
 
     This is used by the chat endpoint for general tax Q&A.
     """
-    print(f"Tax Expert question: {question}")
+    logger.debug("Tax Expert question: %s", question)
 
     context_chunks = retrieve_context(question)
 
     if not context_chunks:
         return "No relevant information found in the knowledge base."
 
-    print(f"Found {len(context_chunks)} relevant documents")
+    logger.debug("Found %d relevant documents", len(context_chunks))
     context = "\n\n".join(context_chunks)
 
     prompt = f"""You are a Thai Tax Expert. Answer the question based on the context.
@@ -255,7 +230,7 @@ Answer:"""
         )
         return response.text
     except Exception as e:
-        print(f"Error generating response: {e}")
+        logger.error("Error generating response: %s", e)
         return "An error occurred while generating the response."
 
 

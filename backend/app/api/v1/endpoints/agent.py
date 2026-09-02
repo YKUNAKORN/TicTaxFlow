@@ -1,4 +1,6 @@
 """Agent Chat API endpoints."""
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from datetime import datetime
@@ -6,6 +8,7 @@ from datetime import datetime
 from app.agents.tax_expert import ask_tax_question
 from app.core.security import get_current_user_id
 
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -44,8 +47,8 @@ async def chat_with_agent(
     
     except HTTPException:
         raise
-    except Exception as e:
-        print(f"Error in chat endpoint: {e}")
+    except Exception:
+        logger.exception("Error in chat endpoint")
         raise HTTPException(
             status_code=500,
             detail="Failed to process chat message"

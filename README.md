@@ -20,7 +20,7 @@ TicTaxFlow - AI Agent for Tax Deduction Management System
 
 ## **Tech Stack**
 - Core: Python
-- LLM & Vision: Gemini 1.5 Pro
+- LLM & Vision: Gemini 2.5 Flash
 - Agent Framework: LangGraph
 - Knowledge Base (RAG): collect PDF files of tax deduction manual of the Revenue Department
 - Database: Supabase
@@ -99,3 +99,18 @@ TicTaxFlow - AI Agent for Tax Deduction Management System
 ```
 docker-compose up -d --build
 ```
+
+## **Rebuilding the RAG knowledge base**
+
+The Chroma vector store (`backend/data/embeddings/`) is not committed to git —
+it's a rebuildable index over the PDFs in `backend/data/documents/`, not source
+of truth. After cloning, build it once:
+
+```
+cd backend
+python -m app.services.document_indexer
+```
+
+This reads every PDF in `backend/data/documents/`, chunks it, and populates
+the local Chroma collection at `backend/data/embeddings/` using Chroma's
+default (MiniLM) embedding function — no `GEMINI_API_KEY` needed for this step.

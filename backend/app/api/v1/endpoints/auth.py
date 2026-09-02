@@ -1,9 +1,13 @@
+import logging
+
 from fastapi import APIRouter, HTTPException, status, Header
 from typing import Optional
 import bcrypt
 
 from app.schemas.user import UserRegister, RegisterResponse, UserResponse, UserLogin, LoginResponse, ChangePassword
 from app.database.database import supabase, get_auth_client
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -61,7 +65,7 @@ async def register(user_data: UserRegister):
         except Exception as insert_error:
             # If public.users insert fails, log but don't fail registration
             # User is already created in auth.users
-            print(f"Warning: Failed to insert into public.users: {insert_error}")
+            logger.warning("Failed to insert into public.users: %s", insert_error)
         
         # Return response with user data
         user_response = UserResponse(
