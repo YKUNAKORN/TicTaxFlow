@@ -36,21 +36,52 @@ def get_tax_rule_by_category(category_name: str, tax_year: int = None) -> Option
         return None
 
 
-def calculate_deductible_amount(total_amount: float, category_name: str) -> Dict[str, Any]:
+def get_used_deductible_amount(user_id: str, rule_id: str) -> float:
+    """Sum deductible amounts already verified for this user's category.
+
+    `rule_id` already encodes both category and tax_year, so this is the
+    cumulative total to cap the NEXT receipt against (per CLAUDE.md:
+    "Deduction caps are cumulative per user + category + tax_year. Never
+    cap a single receipt in isolation.").
+    """
+    try:
+        response = supabase.table("transactions").select("deductible_amount").eq(
+            "user_id", user_id
+        ).eq("rule_id", rule_id).eq("status", "verified").execute()
+
+        return sum(float(t.get("deductible_amount", 0) or 0) for t in (response.data or []))
+    except Exception as e:
+        logger.error("Error fetching used deductible amount: %s", e)
+        return 0.0
+
+
+def calculate_deductible_amount(
+    total_amount: float,
+    category_name: str,
+    already_used: float = 0.0
+) -> Dict[str, Any]:
     """Calculate deductible amount based on tax rules.
-    
+
+    Args:
+        total_amount: Amount of the receipt being evaluated now.
+        category_name: Tax category to look up the rule for.
+        already_used: Deductible total already verified for this user +
+            category + tax_year (see `get_used_deductible_amount`). The cap
+            is applied cumulatively against this running total, not against
+            `total_amount` alone.
+
     Returns:
         Dict with 'amount', 'is_capped', 'max_limit' keys
     """
     tax_rule = get_tax_rule_by_category(category_name)
-    
+
     if not tax_rule:
         return {
             "amount": 0.0,
             "is_capped": False,
             "max_limit": 0.0
         }
-    
+
     max_limit = tax_rule.get("max_limit", 0.0)
 
     # Donations with max_limit=0 means income-based limit (use actual amount)
@@ -68,9 +99,10 @@ def calculate_deductible_amount(total_amount: float, category_name: str) -> Dict
             "max_limit": max_limit
         }
 
-    deductible = min(total_amount, max_limit)
-    is_capped = total_amount > max_limit
-    
+    remaining_limit = max(0.0, max_limit - already_used)
+    deductible = min(total_amount, remaining_limit)
+    is_capped = (already_used + total_amount) > max_limit
+
     return {
         "amount": deductible,
         "is_capped": is_capped,
@@ -182,7 +214,8 @@ def insert_transaction(
         rule_id = tax_rule["id"]
         logger.debug("Tax rule found: id=%s, category=%s", rule_id, category_name)
 
-        calc_result = calculate_deductible_amount(total_amount, category_name)
+        already_used = get_used_deductible_amount(user_id, rule_id)
+        calc_result = calculate_deductible_amount(total_amount, category_name, already_used=already_used)
         deductible_amount = calc_result["amount"]
         is_capped = calc_result["is_capped"]
         max_limit = calc_result["max_limit"]
