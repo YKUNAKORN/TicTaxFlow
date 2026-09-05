@@ -1,6 +1,6 @@
 import React from 'react';
 import { X, CheckCircle, BrainCircuit } from 'lucide-react';
-import { Transaction } from '../../data/mockData';
+import { Transaction } from '../../types/dashboard';
 import { clsx } from 'clsx';
 
 interface TransactionModalProps {
