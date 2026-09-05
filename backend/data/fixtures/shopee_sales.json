@@ -1,0 +1,18 @@
+[
+  {"order_id": "SHP-2025-1001", "date": "2025-01-15", "gross_amount": 1200.00, "fee": 84.00, "net_amount": 1116.00},
+  {"order_id": "SHP-2025-1002", "date": "2025-01-28", "gross_amount": 350.50, "fee": 24.54, "net_amount": 325.96},
+  {"order_id": "SHP-2025-1003", "date": "2025-02-10", "gross_amount": 890.00, "fee": 62.30, "net_amount": 827.70},
+  {"order_id": "SHP-2025-1004", "date": "2025-02-22", "gross_amount": 2100.00, "fee": 147.00, "net_amount": 1953.00},
+  {"order_id": "SHP-2025-1004", "date": "2025-02-22", "gross_amount": 2100.00, "fee": 147.00, "net_amount": 1953.00},
+  {"order_id": "SHP-2025-1005", "date": "2025-03-05", "gross_amount": 675.25, "fee": 47.27, "net_amount": 627.98},
+  {"order_id": "SHP-2025-1006", "date": "2025-03-19", "gross_amount": 1560.00, "fee": 109.20, "net_amount": 1450.80},
+  {"order_id": "SHP-2025-1007", "date": "2025-04-02", "gross_amount": 430.00, "fee": 30.10, "net_amount": 399.90},
+  {"order_id": "SHP-2025-1008", "date": "2025-04-18", "gross_amount": 980.75, "fee": 68.65, "net_amount": 912.10},
+  {"order_id": "SHP-2025-1009", "date": "2025-05-06", "gross_amount": 3200.00, "fee": 224.00, "net_amount": 2976.00},
+  {"order_id": "SHP-2025-1010", "date": "2025-06-14", "gross_amount": 540.00, "fee": 37.80, "net_amount": 502.20},
+  {"order_id": "SHP-2025-1011", "date": "2025-07-22", "gross_amount": 1150.00, "fee": 80.50, "net_amount": 1069.50},
+  {"order_id": "SHP-2025-1012", "date": "2025-08-30", "gross_amount": 720.00, "fee": 50.40, "net_amount": 669.60},
+  {"order_id": "SHP-2025-1013", "date": "2025-10-11", "gross_amount": 990.00, "fee": 69.30, "net_amount": 920.70},
+  {"order_id": "SHP-2025-1014", "date": "2025-11-25", "gross_amount": 1830.00, "fee": 128.10, "net_amount": 1701.90},
+  {"order_id": "SHP-2025-1015", "date": "2025-12-20", "gross_amount": 460.00, "fee": 32.20, "net_amount": 427.80}
+]

@@ -1,0 +1,147 @@
+"""Multi-platform income aggregation.
+
+DEMO / TESTING NOTE: `MockShopeeProvider`, `MockLazadaProvider`, and
+`MockTikTokShopProvider` read seeded sample data from
+`backend/data/fixtures/*_sales.json`. They are stand-ins behind a real
+`SalesProvider` adapter interface, not live Shopee/Lazada/TikTok Shop
+integrations. Swapping in a real OAuth-backed provider later means adding a
+new class that implements `SalesProvider` -- callers of `aggregate_income`
+do not change.
+"""
+import json
+import logging
+from pathlib import Path
+from typing import Protocol
+
+from pydantic import BaseModel
+
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+FIXTURES_DIR = settings.DATA_DIR / "fixtures"
+
+
+class SaleRecord(BaseModel):
+    """One normalised sale, regardless of source marketplace."""
+    order_id: str
+    platform: str
+    date: str
+    gross_amount: float
+    fee: float
+    net_amount: float
+
+
+class SalesProvider(Protocol):
+    """Adapter interface a marketplace sales source must implement."""
+
+    def fetch_sales(self, seller_id: str, period: str) -> list[SaleRecord]:
+        ...
+
+
+def _load_fixture(path: Path, platform: str, period: str) -> list[SaleRecord]:
+    """Load a platform's fixture file, filtered to `period` (a year prefix
+    like "2025" matched against each row's ISO date)."""
+    with open(path, encoding="utf-8") as f:
+        rows = json.load(f)
+
+    return [
+        SaleRecord(platform=platform, **row)
+        for row in rows
+        if row["date"].startswith(period)
+    ]
+
+
+class MockShopeeProvider:
+    """Reads seeded Shopee-shaped sample data. NOT a live Shopee integration."""
+
+    PLATFORM = "Shopee"
+
+    def fetch_sales(self, seller_id: str, period: str) -> list[SaleRecord]:
+        # seller_id is unused: the fixture is shared demo data, not scoped
+        # to individual sellers.
+        return _load_fixture(FIXTURES_DIR / "shopee_sales.json", self.PLATFORM, period)
+
+
+class MockLazadaProvider:
+    """Reads seeded Lazada-shaped sample data. NOT a live Lazada integration."""
+
+    PLATFORM = "Lazada"
+
+    def fetch_sales(self, seller_id: str, period: str) -> list[SaleRecord]:
+        return _load_fixture(FIXTURES_DIR / "lazada_sales.json", self.PLATFORM, period)
+
+
+class MockTikTokShopProvider:
+    """Reads seeded TikTok Shop-shaped sample data. NOT a live TikTok Shop integration."""
+
+    PLATFORM = "TikTokShop"
+
+    def fetch_sales(self, seller_id: str, period: str) -> list[SaleRecord]:
+        return _load_fixture(FIXTURES_DIR / "tiktok_sales.json", self.PLATFORM, period)
+
+
+def aggregate_income(seller_id: str, period: str) -> dict:
+    """Fetch sales from every mock provider, dedupe, and total per platform.
+
+    Dedup key is (platform, order_id): a marketplace occasionally re-sends
+    the same order (pagination overlap), but two different marketplaces can
+    mint the same order_id independently, and those must NOT be collapsed
+    into one sale.
+    """
+    providers: list[SalesProvider] = [
+        MockShopeeProvider(),
+        MockLazadaProvider(),
+        MockTikTokShopProvider(),
+    ]
+
+    all_records: list[SaleRecord] = []
+    for provider in providers:
+        all_records.extend(provider.fetch_sales(seller_id, period))
+
+    seen: set[tuple[str, str]] = set()
+    deduped: list[SaleRecord] = []
+    for record in all_records:
+        key = (record.platform, record.order_id)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(record)
+
+    platform_totals: dict[str, dict] = {}
+    for record in deduped:
+        totals = platform_totals.setdefault(record.platform, {
+            "gross_amount": 0.0,
+            "fee": 0.0,
+            "net_amount": 0.0,
+            "record_count": 0,
+        })
+        totals["gross_amount"] += record.gross_amount
+        totals["fee"] += record.fee
+        totals["net_amount"] += record.net_amount
+        totals["record_count"] += 1
+
+    for totals in platform_totals.values():
+        totals["gross_amount"] = round(totals["gross_amount"], 2)
+        totals["fee"] = round(totals["fee"], 2)
+        totals["net_amount"] = round(totals["net_amount"], 2)
+
+    grand_total = {
+        "gross_amount": round(sum(t["gross_amount"] for t in platform_totals.values()), 2),
+        "fee": round(sum(t["fee"] for t in platform_totals.values()), 2),
+        "net_amount": round(sum(t["net_amount"] for t in platform_totals.values()), 2),
+        "record_count": len(deduped),
+    }
+
+    logger.info(
+        "aggregate_income: period=%s platforms=%s records=%d",
+        period, list(platform_totals.keys()), len(deduped),
+    )
+
+    return {
+        "seller_id": seller_id,
+        "period": period,
+        "platform_totals": platform_totals,
+        "grand_total": grand_total,
+        "records": deduped,
+    }

@@ -1,0 +1,17 @@
+[
+  {"order_id": "TT-2025-3001", "date": "2025-01-20", "gross_amount": 560.00, "fee": 44.80, "net_amount": 515.20},
+  {"order_id": "TT-2025-3002", "date": "2025-02-05", "gross_amount": 1340.00, "fee": 107.20, "net_amount": 1232.80},
+  {"order_id": "TT-2025-3003", "date": "2025-02-27", "gross_amount": 275.50, "fee": 22.04, "net_amount": 253.46},
+  {"order_id": "TT-2025-3004", "date": "2025-03-15", "gross_amount": 2050.00, "fee": 164.00, "net_amount": 1886.00},
+  {"order_id": "TT-2025-3005", "date": "2025-04-08", "gross_amount": 480.00, "fee": 38.40, "net_amount": 441.60},
+  {"order_id": "TT-2025-3006", "date": "2025-04-29", "gross_amount": 1725.00, "fee": 138.00, "net_amount": 1587.00},
+  {"order_id": "TT-2025-3007", "date": "2025-05-19", "gross_amount": 690.25, "fee": 55.22, "net_amount": 635.03},
+  {"order_id": "TT-2025-3008", "date": "2025-06-10", "gross_amount": 3400.00, "fee": 272.00, "net_amount": 3128.00},
+  {"order_id": "TT-2025-3009", "date": "2025-07-02", "gross_amount": 515.00, "fee": 41.20, "net_amount": 473.80},
+  {"order_id": "TT-2025-3010", "date": "2025-07-26", "gross_amount": 875.00, "fee": 70.00, "net_amount": 805.00},
+  {"order_id": "TT-2025-3011", "date": "2025-08-17", "gross_amount": 1240.00, "fee": 99.20, "net_amount": 1140.80},
+  {"order_id": "TT-2025-3012", "date": "2025-09-09", "gross_amount": 350.00, "fee": 28.00, "net_amount": 322.00},
+  {"order_id": "2025-000777", "date": "2025-11-06", "gross_amount": 1275.00, "fee": 102.00, "net_amount": 1173.00},
+  {"order_id": "TT-2025-3013", "date": "2025-11-30", "gross_amount": 960.00, "fee": 76.80, "net_amount": 883.20},
+  {"order_id": "TT-2025-3014", "date": "2025-12-27", "gross_amount": 610.00, "fee": 48.80, "net_amount": 561.20}
+]

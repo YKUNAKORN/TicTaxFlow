@@ -36,18 +36,31 @@ def get_tax_rule_by_category(category_name: str, tax_year: int = None) -> Option
         return None
 
 
-def get_used_deductible_amount(user_id: str, rule_id: str) -> float:
+def get_used_deductible_amount(
+    user_id: str,
+    rule_id: str,
+    exclude_transaction_id: Optional[str] = None,
+) -> float:
     """Sum deductible amounts already verified for this user's category.
 
     `rule_id` already encodes both category and tax_year, so this is the
     cumulative total to cap the NEXT receipt against (per CLAUDE.md:
     "Deduction caps are cumulative per user + category + tax_year. Never
     cap a single receipt in isolation.").
+
+    `exclude_transaction_id` drops one transaction from the sum. The edit
+    path passes the row being edited so its own current amount is not
+    double-counted when recalculating its deductible against the cap.
     """
     try:
-        response = supabase.table("transactions").select("deductible_amount").eq(
+        query = supabase.table("transactions").select("deductible_amount").eq(
             "user_id", user_id
-        ).eq("rule_id", rule_id).eq("status", "verified").execute()
+        ).eq("rule_id", rule_id).eq("status", "verified")
+
+        if exclude_transaction_id is not None:
+            query = query.neq("id", exclude_transaction_id)
+
+        response = query.execute()
 
         return sum(float(t.get("deductible_amount", 0) or 0) for t in (response.data or []))
     except Exception as e:
@@ -284,16 +297,25 @@ def update_transaction(
     try:
         recalculated = False
         if "total_amount" in updates:
-            current = supabase.table("transactions").select("rule_id").eq("id", transaction_id).execute()
-            
-            if current.data:
-                rule = supabase.table("tax_rules").select("category_name").eq("id", current.data[0]["rule_id"]).execute()
-                
+            current = supabase.table("transactions").select("user_id, rule_id").eq("id", transaction_id).execute()
+
+            if current.data and current.data[0].get("rule_id"):
+                rule_id = current.data[0]["rule_id"]
+                user_id = current.data[0]["user_id"]
+                rule = supabase.table("tax_rules").select("category_name").eq("id", rule_id).execute()
+
                 if rule.data:
                     category_name = rule.data[0]["category_name"]
+                    # Cap against the category's REMAINING headroom, same as
+                    # the upload path. Exclude this row so its own current
+                    # deductible is not double-counted in already_used.
+                    already_used = get_used_deductible_amount(
+                        user_id, rule_id, exclude_transaction_id=transaction_id
+                    )
                     calc_result = calculate_deductible_amount(
                         updates["total_amount"],
-                        category_name
+                        category_name,
+                        already_used=already_used,
                     )
                     updates["deductible_amount"] = calc_result["amount"]
                     recalculated = True
