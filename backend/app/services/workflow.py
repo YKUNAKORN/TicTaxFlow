@@ -10,6 +10,7 @@ from app.agents.tax_expert import ask_tax_expert, ask_tax_question
 from app.agents.accountant import save_receipt_from_inspector
 from app.services.income_aggregator import aggregate_income
 from app.services.tax_estimator import estimate_pit
+from app.services.advisor import suggest_deduction_optimizations
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,7 @@ class AgentState(TypedDict):
     period: str
     income_data: dict
     tax_estimate: dict
+    deduction_suggestions: list
     messages: Annotated[list, add_messages]
 
 
@@ -243,6 +245,24 @@ def estimate_tax_node(state: AgentState) -> AgentState:
     return state
 
 
+def advisor_node(state: AgentState) -> AgentState:
+    """Rank deduction top-up suggestions from remaining category headroom
+    (accountant.py cap logic) and the marginal PIT rate implied by the
+    estimated income (tax_estimator.py)."""
+    logger.info("Node: Advisor - ranking deduction suggestions")
+
+    net_amount = state["income_data"]["grand_total"]["net_amount"]
+    suggestions = suggest_deduction_optimizations(state["user_id"], net_amount)
+
+    state["deduction_suggestions"] = suggestions
+    state["messages"].append({
+        "role": "system",
+        "content": f"Deduction suggestions: {len(suggestions)} found",
+    })
+
+    return state
+
+
 # ---------------------------------------------------------------------------
 # Tax Q&A node (no receipt, free-text question only)
 # ---------------------------------------------------------------------------
@@ -273,7 +293,7 @@ def build_workflow():
 
     Flow:
     START -> Router (income sync? has image? else question)
-          -> Income -> Estimate Tax -> END
+          -> Income -> Estimate Tax -> Advisor -> END
           -> Inspector -> Validator (data complete?)
                        -> Tax Expert (RAG) -> Accountant (DB) -> END
                        -> Human Input (if incomplete) -> END
@@ -288,6 +308,7 @@ def build_workflow():
     workflow.add_node("tax_question", tax_question_node)
     workflow.add_node("income", income_node)
     workflow.add_node("estimate_tax", estimate_tax_node)
+    workflow.add_node("advisor", advisor_node)
 
     # Entry point: decide income sync vs receipt vs question
     workflow.set_conditional_entry_point(
@@ -299,9 +320,10 @@ def build_workflow():
         }
     )
 
-    # After Income, estimate PIT
+    # After Income, estimate PIT then rank deduction suggestions
     workflow.add_edge("income", "estimate_tax")
-    workflow.add_edge("estimate_tax", END)
+    workflow.add_edge("estimate_tax", "advisor")
+    workflow.add_edge("advisor", END)
 
     # After Inspector, validate completeness
     workflow.add_conditional_edges(
@@ -330,7 +352,7 @@ def build_workflow():
 # Compiled exactly once, at module import time (i.e. application startup),
 # and reused for every request. Never call build_workflow() per request.
 compiled_graph = build_workflow()
-logger.info("LangGraph workflow compiled (nodes: inspect, tax_expert, accountant, human_input, tax_question, income, estimate_tax)")
+logger.info("LangGraph workflow compiled (nodes: inspect, tax_expert, accountant, human_input, tax_question, income, estimate_tax, advisor)")
 
 
 # ---------------------------------------------------------------------------
@@ -365,6 +387,7 @@ def run_receipt_workflow(
         "period": None,
         "income_data": {},
         "tax_estimate": {},
+        "deduction_suggestions": [],
         "messages": [],
     }
     return compiled_graph.invoke(initial_state)
@@ -393,6 +416,7 @@ def run_tax_assistant(question: str, image_path: str = None, user_id: str = "dem
         "period": None,
         "income_data": {},
         "tax_estimate": {},
+        "deduction_suggestions": [],
         "messages": [{"role": "user", "content": question}],
     }
 
