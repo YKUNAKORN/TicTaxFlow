@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { CheckCircle, Shield, Zap, BookOpen, PieChart, FileText, Bot } from 'lucide-react';
+import { CheckCircle, Shield, ShieldAlert, Zap, BookOpen, PieChart, FileText, Bot } from 'lucide-react';
 import logo from '../assets/logo-icon.png';
 
 const FeaturesPage: React.FC = () => {
@@ -71,7 +71,7 @@ const FeaturesPage: React.FC = () => {
                         </ul>
                     </div>
                     <div className="flex-1 relative">
-                        <div className="absolute -inset-4 bg-gradient-to-r from-primary-600 to-purple-600 rounded-2xl opacity-20 blur-2xl"></div>
+                        <div className="absolute -inset-4 bg-gradient-to-r from-primary-600 to-primary-800 rounded-2xl opacity-20 blur-2xl"></div>
                         <div className="relative bg-white rounded-2xl border border-slate-200 shadow-xl p-8">
                             <div className="flex items-center gap-4 mb-6 border-b border-slate-100 pb-4">
                                 <div className="h-3 w-3 rounded-full bg-red-400"></div>
@@ -161,8 +161,8 @@ const FeaturesPage: React.FC = () => {
                         </p>
                         <div className="bg-slate-50 border border-slate-200 rounded-xl p-6">
                             <div className="flex items-start gap-4">
-                                <div className="h-10 w-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-xl flex-shrink-0">
-                                    👮
+                                <div className="h-10 w-10 rounded-full bg-white border border-slate-200 flex items-center justify-center text-primary-600 flex-shrink-0">
+                                    <ShieldAlert size={20} />
                                 </div>
                                 <div>
                                     <h4 className="font-semibold text-slate-900">The Inspector Says:</h4>

@@ -23,15 +23,15 @@ const AuthNavbar: React.FC = () => {
 
             {/* Backdrop */}
             {isOpen && (
-                <div 
-                    className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40 transition-opacity"
+                <div
+                    className="fixed inset-0 bg-slate-900/30 z-40"
                     onClick={() => setIsOpen(false)}
                 />
             )}
 
             {/* Slide-out Menu */}
-            <div 
-                className={`fixed top-0 left-0 h-full w-64 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out ${
+            <div
+                className={`fixed top-0 left-0 h-full w-64 bg-white shadow-xl z-50 will-change-transform transition-transform duration-200 ease-out ${
                     isOpen ? 'translate-x-0' : '-translate-x-full'
                 }`}
             >
