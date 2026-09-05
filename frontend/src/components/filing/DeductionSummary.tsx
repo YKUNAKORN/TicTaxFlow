@@ -8,11 +8,11 @@ interface DeductionSummaryProps {
 const DeductionSummary: React.FC<DeductionSummaryProps> = ({ deductions }) => {
     return (
         <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-            <h3 className="font-semibold text-slate-900 mb-1">สรุปค่าลดหย่อน</h3>
-            <p className="text-sm text-slate-500 mb-6">ใช้ไปเท่าไร เหลือเท่าไรในแต่ละหมวด</p>
+            <h3 className="font-semibold text-slate-900 mb-1">Deduction summary</h3>
+            <p className="text-sm text-slate-500 mb-6">Used vs. remaining in each category</p>
 
             {deductions.categories.length === 0 ? (
-                <p className="text-sm text-slate-500 text-center py-4">ไม่มีข้อมูลค่าลดหย่อน</p>
+                <p className="text-sm text-slate-500 text-center py-4">No deduction data available</p>
             ) : (
                 <div className="space-y-4">
                     {deductions.categories.map((category) => {
@@ -32,8 +32,8 @@ const DeductionSummary: React.FC<DeductionSummaryProps> = ({ deductions }) => {
                                     />
                                 </div>
                                 <p className="text-xs text-slate-400 mt-1">
-                                    ฿{category.used.toLocaleString()} จากวงเงิน ฿{category.max_limit.toLocaleString()}
-                                    {' '}(เหลือ ฿{category.remaining.toLocaleString()})
+                                    ฿{category.used.toLocaleString()} of ฿{category.max_limit.toLocaleString()} limit
+                                    {' '}(฿{category.remaining.toLocaleString()} remaining)
                                 </p>
                             </div>
                         );

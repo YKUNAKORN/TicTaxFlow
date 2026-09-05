@@ -8,7 +8,7 @@ const UnverifiedBanner: React.FC = () => (
     >
         <AlertTriangle size={22} className="flex-shrink-0 mt-0.5 text-accent-600" />
         <p className="text-sm font-semibold text-slate-900 leading-relaxed">
-            ตัวเลขในหน้านี้ยังไม่ได้ยืนยันกับกรมสรรพากร — ห้ามนำไปใช้ยื่นจริง
+            The figures on this page have not been verified against the Revenue Department — do not use them for an actual filing.
         </p>
     </div>
 );

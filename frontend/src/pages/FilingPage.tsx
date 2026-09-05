@@ -15,8 +15,8 @@ const FORM_NAME: Record<FormType, string> = {
     PND90: 'ภ.ง.ด.90',
 };
 
-function formatThaiDate(iso: string): string {
-    return new Date(iso).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+function formatDate(iso: string): string {
+    return new Date(iso).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 const FilingPage: React.FC = () => {
@@ -91,7 +91,7 @@ const FilingPage: React.FC = () => {
             <div className="flex items-center justify-center h-64">
                 <div className="text-center">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-                    <p className="text-slate-600">กำลังเตรียมข้อมูลยื่นภาษี...</p>
+                    <p className="text-slate-600">Preparing your filing data...</p>
                 </div>
             </div>
         );
@@ -101,17 +101,17 @@ const FilingPage: React.FC = () => {
         return (
             <div className="space-y-6">
                 <div>
-                    <h2 className="text-2xl font-bold text-slate-900">เตรียมยื่นภาษี</h2>
-                    <p className="text-slate-500 mt-1">รวมรายได้ เปรียบเทียบวิธีหักค่าใช้จ่าย และเตรียมตัวเลขสำหรับยื่นแบบ</p>
+                    <h2 className="text-2xl font-bold text-slate-900">Filing</h2>
+                    <p className="text-slate-500 mt-1">Merge your income, compare expense methods, and prepare the figures for your return.</p>
                 </div>
                 <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-                    <h3 className="text-sm font-medium text-red-800">ไม่สามารถโหลดข้อมูลได้</h3>
+                    <h3 className="text-sm font-medium text-red-800">Couldn't load filing data</h3>
                     <p className="mt-2 text-sm text-red-700">{error}</p>
                     <button
                         onClick={() => (taxYear !== null ? fetchPack(selectedForm, taxYear) : fetchForms())}
                         className="mt-4 px-4 py-2 bg-red-100 text-red-800 text-sm font-medium rounded-lg hover:bg-red-200 transition-colors"
                     >
-                        ลองอีกครั้ง
+                        Try again
                     </button>
                 </div>
             </div>
@@ -124,9 +124,9 @@ const FilingPage: React.FC = () => {
         <div className="space-y-6">
             <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
-                    <h2 className="text-2xl font-bold text-slate-900">เตรียมยื่นภาษี</h2>
+                    <h2 className="text-2xl font-bold text-slate-900">Filing</h2>
                     <p className="text-slate-500 mt-1">
-                        {pack ? `${FORM_NAME[pack.form_type]} · ปีภาษี ${pack.tax_year} · กำหนดยื่น ${formatThaiDate(pack.deadline.deadline_date)}` : 'รวมรายได้ เปรียบเทียบวิธีหักค่าใช้จ่าย และเตรียมตัวเลขสำหรับยื่นแบบ'}
+                        {pack ? `${FORM_NAME[pack.form_type]} · Tax year ${pack.tax_year} · Deadline ${formatDate(pack.deadline.deadline_date)}` : 'Merge your income, compare expense methods, and prepare the figures for your return.'}
                     </p>
                 </div>
                 <button
@@ -134,7 +134,7 @@ const FilingPage: React.FC = () => {
                     className="print:hidden flex items-center gap-2 px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors"
                 >
                     <Printer size={16} />
-                    พิมพ์เอกสาร
+                    Print document
                 </button>
             </div>
 
@@ -143,7 +143,7 @@ const FilingPage: React.FC = () => {
             <div className={unverified ? 'opacity-60 print:opacity-100 space-y-6' : 'space-y-6'}>
                 <FormPicker forms={forms} selected={selectedForm} onSelect={setSelectedForm} />
 
-                {isRefreshing && <p className="text-sm text-slate-400">กำลังอัปเดต...</p>}
+                {isRefreshing && <p className="text-sm text-slate-400">Updating...</p>}
 
                 {pack && (
                     <>
