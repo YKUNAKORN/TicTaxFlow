@@ -61,3 +61,19 @@ def estimate_pit(taxable_income: float) -> dict:
         "brackets_verified": BRACKETS_VERIFIED,
         "breakdown": breakdown,
     }
+
+
+def get_marginal_rate(taxable_income: float) -> float:
+    """Rate of the top bracket `taxable_income` actually reaches -- the
+    rate that applies to (and would be saved on) the next baht of
+    deduction. Reuses `estimate_pit`'s breakdown instead of re-walking
+    PIT_BRACKETS, so the two never disagree on which bracket an income
+    falls into.
+    """
+    breakdown = estimate_pit(taxable_income)["breakdown"]
+    active_brackets = [b for b in breakdown if b["taxable_at_rate"] > 0]
+
+    if not active_brackets:
+        return breakdown[0]["rate"]
+
+    return active_brackets[-1]["rate"]

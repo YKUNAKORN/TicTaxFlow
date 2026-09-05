@@ -36,9 +36,12 @@ def _base_state(**overrides):
 
 
 def test_income_sync_flows_through_to_tax_estimate():
-    result = compiled_graph.invoke(
-        _base_state(seller_id=SELLER_ID, period=PERIOD)
-    )
+    # Advisor node runs after estimate_tax; stub its category lookup so
+    # this test never hits real Supabase (see conftest.py).
+    with patch("app.agents.accountant.get_active_tax_rules", return_value=[]):
+        result = compiled_graph.invoke(
+            _base_state(seller_id=SELLER_ID, period=PERIOD)
+        )
 
     assert result["status"] == "completed"
     assert result["income_data"]["grand_total"]["record_count"] > 0
@@ -48,6 +51,7 @@ def test_income_sync_flows_through_to_tax_estimate():
 
     assert result["tax_estimate"]["tax_due"] == expected_estimate["tax_due"]
     assert result["tax_estimate"]["breakdown"] == expected_estimate["breakdown"]
+    assert result["deduction_suggestions"] == []
 
 
 def test_no_seller_id_still_routes_to_tax_question_not_income():
