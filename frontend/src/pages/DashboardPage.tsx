@@ -3,10 +3,13 @@ import SummaryCards from '../components/dashboard/SummaryCards';
 import UploadZone from '../components/dashboard/UploadZone';
 import TransactionsTable from '../components/dashboard/TransactionsTable';
 import TransactionModal from '../components/Features/TransactionModal';
-import { Transaction, SummaryStat } from '../data/mockData';
+import FinancialOverviewChart from '../components/dashboard/FinancialOverviewChart';
+import IncomeByPlatformChart from '../components/dashboard/IncomeByPlatformChart';
+import AdvisorSuggestionCard from '../components/dashboard/AdvisorSuggestionCard';
 import { dashboardApi } from '../api/dashboard';
+import { incomeApi } from '../api/income';
 import { storage } from '../lib/storage';
-import type { DashboardSummary, CategoryBreakdown } from '../types/dashboard';
+import type { DashboardSummary, IncomeSyncResponse, SummaryStat, Transaction } from '../types/dashboard';
 
 const DashboardPage: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -15,9 +18,12 @@ const DashboardPage: React.FC = () => {
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [error, setError] = useState<string>('');
     const [summaryData, setSummaryData] = useState<DashboardSummary | null>(null);
+    const [incomeData, setIncomeData] = useState<IncomeSyncResponse | null>(null);
+    const [isIncomeLoading, setIsIncomeLoading] = useState(true);
 
     useEffect(() => {
         fetchDashboardData();
+        fetchIncomeData();
     }, []);
 
     const fetchDashboardData = async (silent = false) => {
@@ -41,7 +47,7 @@ const DashboardPage: React.FC = () => {
 
             if (response.success) {
                 setSummaryData(response.data);
-                
+
                 if (response.data.total_transactions === 0) {
                     console.warn('WARNING: No transactions found for this user');
                 }
@@ -53,6 +59,27 @@ const DashboardPage: React.FC = () => {
         } finally {
             setIsLoading(false);
             setIsRefreshing(false);
+        }
+    };
+
+    const fetchIncomeData = async () => {
+        const token = storage.getToken();
+        if (!token) {
+            setIsIncomeLoading(false);
+            return;
+        }
+
+        setIsIncomeLoading(true);
+
+        try {
+            const response = await incomeApi.sync();
+            if (response.success) {
+                setIncomeData(response);
+            }
+        } catch (err: any) {
+            console.error('ERROR: Failed to sync income data:', err);
+        } finally {
+            setIsIncomeLoading(false);
         }
     };
 
@@ -234,7 +261,7 @@ const DashboardPage: React.FC = () => {
                     <p className="text-slate-500 mt-1">Overview of your tax deductions and uploaded documents.</p>
                 </div>
                 <button
-                    onClick={() => fetchDashboardData(true)}
+                    onClick={() => { fetchDashboardData(true); fetchIncomeData(); }}
                     disabled={isRefreshing}
                     className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white font-medium rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -251,6 +278,32 @@ const DashboardPage: React.FC = () => {
             </div>
 
             <SummaryCards stats={mapToSummaryStats()} />
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-8">
+                    <FinancialOverviewChart
+                        income={incomeData?.grand_total.net_amount ?? 0}
+                        deductions={summaryData?.total_deductible_amount ?? 0}
+                        estimatedTax={incomeData?.tax_estimate.tax_due ?? 0}
+                        bracketsVerified={incomeData?.tax_estimate.brackets_verified ?? false}
+                        isLoading={isIncomeLoading}
+                        hasData={!!incomeData}
+                    />
+                    <IncomeByPlatformChart
+                        platformTotals={incomeData?.platform_totals ?? {}}
+                        isLoading={isIncomeLoading}
+                        hasData={!!incomeData}
+                    />
+                </div>
+                <div>
+                    <AdvisorSuggestionCard
+                        suggestion={incomeData?.deduction_suggestions?.[0] ?? null}
+                        isLoading={isIncomeLoading}
+                        hasData={!!incomeData}
+                        estimatedTaxDue={incomeData?.tax_estimate.tax_due ?? 0}
+                    />
+                </div>
+            </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Main Content Area */}

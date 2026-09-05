@@ -1,5 +1,5 @@
 import React from 'react';
-import { Transaction } from '../../data/mockData';
+import { Transaction } from '../../types/dashboard';
 import { MoreHorizontal, FileCheck, Clock, AlertCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 

@@ -393,6 +393,37 @@ def run_receipt_workflow(
     return compiled_graph.invoke(initial_state)
 
 
+def run_income_workflow(user_id: str, period: str) -> AgentState:
+    """Run an income sync through the compiled graph: Income -> Estimate
+    Tax -> Advisor.
+
+    Used by /income/sync so that path -- like the receipt path -- goes
+    through the compiled graph instead of calling aggregate_income /
+    estimate_pit / suggest_deduction_optimizations by hand.
+    """
+    initial_state = {
+        "question": "",
+        "image_path": None,
+        "image_bytes": None,
+        "image_url": None,
+        "receipt_data": {},
+        "tax_analysis": {},
+        "tax_advice": "",
+        "needs_human_input": False,
+        "missing_fields": [],
+        "status": "",
+        "accountant_result": {},
+        "user_id": user_id,
+        "seller_id": user_id,
+        "period": period,
+        "income_data": {},
+        "tax_estimate": {},
+        "deduction_suggestions": [],
+        "messages": [],
+    }
+    return compiled_graph.invoke(initial_state)
+
+
 def run_tax_assistant(question: str, image_path: str = None, user_id: str = "demo-user-id"):
     """Run the tax assistant workflow (CLI/demo entry point)."""
     print("=" * 60)

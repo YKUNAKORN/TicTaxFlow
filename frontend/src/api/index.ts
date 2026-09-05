@@ -5,4 +5,5 @@ export { receiptApi } from './receipt';
 export { agentApi } from './agent';
 export { transactionsApi } from './transactions';
 export { taxRulesApi } from './taxRules';
+export { incomeApi } from './income';
 export { apiClient, ApiError } from './client';

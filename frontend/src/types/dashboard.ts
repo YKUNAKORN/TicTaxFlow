@@ -49,3 +49,70 @@ export interface DashboardSummaryResponse {
   success: boolean;
   data: DashboardSummary;
 }
+
+// --- UI-facing transaction/summary-card shapes (moved from data/mockData.ts) ---
+
+export interface Transaction {
+  id: string;
+  date: string;
+  merchant: string;
+  category: string;
+  amount: number;
+  status: 'Verified' | 'Processing' | 'Needs Review' | 'Not Deductible';
+  receiptUrl: string;
+  aiReasoning: string;
+  taxId?: string;
+}
+
+export interface SummaryStat {
+  label: string;
+  value: string;
+  subValue?: string;
+  trend?: 'up' | 'down' | 'neutral';
+  color: 'blue' | 'green' | 'emerald' | 'slate';
+}
+
+// --- Income sync (/income/sync) ---
+
+export interface PlatformTotal {
+  gross_amount: number;
+  fee: number;
+  net_amount: number;
+  record_count: number;
+}
+
+export interface IncomePlatformTotals {
+  [platform: string]: PlatformTotal;
+}
+
+export interface TaxBracketBreakdown {
+  bracket_min: number;
+  bracket_max: number | null;
+  rate: number;
+  taxable_at_rate: number;
+  tax_for_bracket: number;
+}
+
+export interface TaxEstimate {
+  taxable_income: number;
+  tax_due: number;
+  brackets_verified: boolean;
+  breakdown: TaxBracketBreakdown[];
+}
+
+export interface DeductionSuggestion {
+  category_name: string;
+  top_up_amount: number;
+  marginal_rate: number;
+  estimated_tax_saving: number;
+  rule_reference: string;
+}
+
+export interface IncomeSyncResponse {
+  success: boolean;
+  period: string;
+  platform_totals: IncomePlatformTotals;
+  grand_total: PlatformTotal;
+  tax_estimate: TaxEstimate;
+  deduction_suggestions: DeductionSuggestion[];
+}

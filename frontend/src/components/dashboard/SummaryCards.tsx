@@ -1,7 +1,7 @@
 import React from 'react';
 import { TrendingUp, TrendingDown, Minus, DollarSign, FileText, PieChart } from 'lucide-react';
 import { clsx } from 'clsx';
-import { SummaryStat } from '../../data/mockData';
+import { SummaryStat } from '../../types/dashboard';
 
 interface SummaryCardsProps {
     stats: SummaryStat[];
