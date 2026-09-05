@@ -304,7 +304,7 @@ const DashboardPage: React.FC = () => {
                     className="flex items-center gap-3 rounded-lg border border-accent-100 bg-accent-50 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-accent-100 transition-colors"
                 >
                     <FileCheck size={18} className="text-accent-600 flex-shrink-0" />
-                    ภ.ง.ด.94 ครบกำหนดใน {pnd94Deadline.days_remaining} วัน → เตรียมเอกสาร
+                    ภ.ง.ด.94 due in {pnd94Deadline.days_remaining} days → Prepare documents
                 </Link>
             )}
 

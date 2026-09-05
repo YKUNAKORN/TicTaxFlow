@@ -13,8 +13,8 @@ const DocumentChecklist: React.FC<DocumentChecklistProps> = ({ items }) => {
 
     return (
         <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-            <h3 className="font-semibold text-slate-900 mb-1">เอกสารที่ควรเตรียม</h3>
-            <p className="text-sm text-slate-500 mb-4">ติ๊กเพื่อเช็คลิสต์ของคุณเอง — ไม่ได้บันทึกไว้ในระบบ</p>
+            <h3 className="font-semibold text-slate-900 mb-1">Documents to prepare</h3>
+            <p className="text-sm text-slate-500 mb-4">Check items off for yourself — not saved to the system</p>
 
             <ul className="space-y-2.5">
                 {items.map((item, index) => (

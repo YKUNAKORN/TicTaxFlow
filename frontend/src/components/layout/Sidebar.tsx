@@ -21,7 +21,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         { icon: Receipt, label: 'Transactions', path: '/transactions' },
         { icon: Bot, label: 'AI Agent', path: '/agent' },
         { icon: BookOpen, label: 'Tax Rules (AI Docs)', path: '/tax-rules' },
-        { icon: FileCheck, label: 'เตรียมยื่นภาษี', path: '/filing' },
+        { icon: FileCheck, label: 'Filing', path: '/filing' },
         { icon: User, label: 'Profile', path: '/profile' },
     ];
 

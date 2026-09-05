@@ -12,15 +12,15 @@ const CopyValueButton: React.FC<{ value: number; copied: boolean; onCopy: () => 
             type="button"
             onClick={onCopy}
             className="print:hidden inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 hover:border-primary-200 transition-colors"
-            title="คัดลอกตัวเลข (ไม่มีสัญลักษณ์บาทหรือจุลภาค)"
+            title="Copy the raw number (no baht sign or thousands separator)"
         >
             {copied ? (
                 <>
-                    <Check size={13} className="text-emerald-600" /> คัดลอกแล้ว
+                    <Check size={13} className="text-emerald-600" /> Copied
                 </>
             ) : (
                 <>
-                    <Copy size={13} /> คัดลอก
+                    <Copy size={13} /> Copy
                 </>
             )}
         </button>
@@ -46,25 +46,25 @@ const BoxMappingTable: React.FC<BoxMappingTableProps> = ({ rows }) => {
 
     return (
         <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
-            <h3 className="font-semibold text-slate-900 mb-1">ตารางเทียบข้อในแบบฟอร์ม</h3>
-            <p className="text-sm text-slate-500 mb-6">คัดลอกตัวเลขไปวางในระบบ e-Filing ของกรมสรรพากร</p>
+            <h3 className="font-semibold text-slate-900 mb-1">Form box mapping</h3>
+            <p className="text-sm text-slate-500 mb-6">Copy each value into the Revenue Department's e-Filing system</p>
 
             {/* Desktop / tablet: table */}
             <div className="hidden sm:block overflow-x-auto">
                 <table className="w-full text-sm">
                     <thead>
                         <tr className="text-left text-xs text-slate-400 uppercase tracking-wide border-b border-slate-100">
-                            <th className="pb-3 font-medium">รายการ</th>
-                            <th className="pb-3 font-medium">ข้อในแบบฟอร์ม</th>
-                            <th className="pb-3 font-medium text-right">มูลค่า</th>
+                            <th className="pb-3 font-medium">Item</th>
+                            <th className="pb-3 font-medium">Form reference</th>
+                            <th className="pb-3 font-medium text-right">Value</th>
                         </tr>
                     </thead>
                     <tbody>
                         {rows.map((row, index) => (
                             <tr key={row.form_item} className="border-b border-slate-50 align-top break-inside-avoid">
                                 <td className="py-3 pr-4">
-                                    <p className="font-medium text-slate-900">{row.label_th}</p>
-                                    <p className="text-xs text-slate-400 mt-0.5">{row.label_en}</p>
+                                    <p className="font-medium text-slate-900">{row.label_en}</p>
+                                    <p className="text-xs text-slate-400 mt-0.5">{row.label_th}</p>
                                     {row.note && <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed max-w-md">{row.note}</p>}
                                 </td>
                                 <td className="py-3 pr-4 text-slate-600">{row.form_item}</td>
@@ -85,8 +85,8 @@ const BoxMappingTable: React.FC<BoxMappingTableProps> = ({ rows }) => {
             <div className="sm:hidden space-y-3">
                 {rows.map((row, index) => (
                     <div key={row.form_item} className="rounded-lg border border-slate-100 p-4 break-inside-avoid">
-                        <p className="font-medium text-slate-900 text-sm">{row.label_th}</p>
-                        <p className="text-xs text-slate-400 mt-0.5">{row.label_en}</p>
+                        <p className="font-medium text-slate-900 text-sm">{row.label_en}</p>
+                        <p className="text-xs text-slate-400 mt-0.5">{row.label_th}</p>
                         <p className="text-xs text-slate-500 mt-2">{row.form_item}</p>
                         {row.note && <p className="text-[11px] text-slate-400 mt-1.5 leading-relaxed">{row.note}</p>}
                         <div className="mt-3">

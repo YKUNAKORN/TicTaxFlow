@@ -10,8 +10,8 @@ interface FormPickerProps {
 }
 
 const FORM_META: Record<FormType, { name: string; covers: string }> = {
-    PND94: { name: 'ภ.ง.ด.94', covers: 'รายได้ ม.ค.–มิ.ย. (ยื่นกลางปี)' },
-    PND90: { name: 'ภ.ง.ด.90', covers: 'รายได้ทั้งปี (ยื่นประจำปี)' },
+    PND94: { name: 'ภ.ง.ด.94', covers: 'Jan–Jun income (mid-year filing)' },
+    PND90: { name: 'ภ.ง.ด.90', covers: 'Full-year income (annual filing)' },
 };
 
 type Tone = 'calm' | 'soon' | 'urgent' | 'overdue';
@@ -30,8 +30,8 @@ const TONE_BADGE: Record<Tone, string> = {
     overdue: 'bg-secondary-700 text-white',
 };
 
-function formatThaiDate(iso: string): string {
-    return new Date(iso).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' });
+function formatDate(iso: string): string {
+    return new Date(iso).toLocaleDateString('en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 const CountdownBadge: React.FC<{ deadline: FilingDeadline }> = ({ deadline }) => {
@@ -41,12 +41,12 @@ const CountdownBadge: React.FC<{ deadline: FilingDeadline }> = ({ deadline }) =>
             <span className={clsx('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold', TONE_BADGE[tone])}>
                 <Clock size={12} />
                 {deadline.is_overdue
-                    ? `เลยกำหนดมาแล้ว ${Math.abs(deadline.days_remaining)} วัน`
-                    : `เหลือ ${deadline.days_remaining} วัน`}
+                    ? `${Math.abs(deadline.days_remaining)} days overdue`
+                    : `${deadline.days_remaining} days left`}
             </span>
             {tone === 'overdue' && (
                 <p className="text-xs text-secondary-700 font-medium leading-relaxed">
-                    เกินกำหนดยื่นแล้ว อาจมีเบี้ยปรับและเงินเพิ่มตามกฎหมาย
+                    Past the filing deadline — penalties and surcharges may apply by law.
                 </p>
             )}
         </div>
@@ -79,14 +79,14 @@ const FormPicker: React.FC<FormPickerProps> = ({ forms, selected, onSelect }) =>
                             </div>
                             {isSelected && (
                                 <span className="flex-shrink-0 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-primary-600 text-white">
-                                    เลือกอยู่
+                                    Selected
                                 </span>
                             )}
                         </div>
 
                         <div className="mt-4 flex items-center gap-2 text-sm text-slate-600">
                             <Calendar size={15} className="text-slate-400" />
-                            กำหนดยื่น {formatThaiDate(form.deadline.deadline_date)}
+                            Deadline: {formatDate(form.deadline.deadline_date)}
                         </div>
 
                         <div className="mt-3">
