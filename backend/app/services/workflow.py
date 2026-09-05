@@ -10,6 +10,7 @@ from app.agents.tax_expert import ask_tax_expert, ask_tax_question
 from app.agents.accountant import save_receipt_from_inspector
 from app.services.income_aggregator import aggregate_income
 from app.services.tax_estimator import estimate_pit
+from app.services.taxable_income import compute_taxable_income
 from app.services.advisor import suggest_deduction_optimizations
 
 logger = logging.getLogger(__name__)
@@ -231,11 +232,34 @@ def income_node(state: AgentState) -> AgentState:
 
 
 def estimate_tax_node(state: AgentState) -> AgentState:
-    """Estimate PIT due on the aggregated income's net total."""
+    """Estimate PIT due on the aggregated income's GROSS total, after the
+    Section 40(8) statutory expense deduction (flat 60% by default) --
+    NOT on `net_amount` (gross minus marketplace fees), which skips both
+    the expense deduction and any allowances entirely. See
+    app/services/taxable_income.py for the full method-comparison path
+    used by the filing pack; this node uses the flat method as a quick
+    default estimate for the income-sync dashboard.
+    """
     logger.info("Node: Estimate Tax - computing PIT")
 
-    net_amount = state["income_data"]["grand_total"]["net_amount"]
-    state["tax_estimate"] = estimate_pit(net_amount)
+    gross_income = state["income_data"]["grand_total"]["gross_amount"]
+    # No form-specific allowance figure is available on this generic
+    # income-sync path (no tax_year/form_type in scope here) -- 0.0 is a
+    # conservative placeholder that never OVER-states the deduction. The
+    # filing pack (app/services/filing_pack.py) computes a real
+    # total_allowances figure from the user's actual deduction categories.
+    taxable = compute_taxable_income(
+        gross_income=gross_income,
+        expense_method="flat",
+        documented_expenses=0.0,
+        total_allowances=0.0,
+    )
+
+    tax_estimate = estimate_pit(taxable["taxable_income"])
+    tax_estimate["gross_income"] = gross_income
+    tax_estimate["expense_deduction"] = taxable["expense_deduction"]
+
+    state["tax_estimate"] = tax_estimate
     state["status"] = "completed"
     state["messages"].append({
         "role": "system",
@@ -248,11 +272,12 @@ def estimate_tax_node(state: AgentState) -> AgentState:
 def advisor_node(state: AgentState) -> AgentState:
     """Rank deduction top-up suggestions from remaining category headroom
     (accountant.py cap logic) and the marginal PIT rate implied by the
-    estimated income (tax_estimator.py)."""
+    corrected taxable income (tax_estimator.py), not the raw net sales
+    total."""
     logger.info("Node: Advisor - ranking deduction suggestions")
 
-    net_amount = state["income_data"]["grand_total"]["net_amount"]
-    suggestions = suggest_deduction_optimizations(state["user_id"], net_amount)
+    taxable_income = state["tax_estimate"]["taxable_income"]
+    suggestions = suggest_deduction_optimizations(state["user_id"], taxable_income)
 
     state["deduction_suggestions"] = suggestions
     state["messages"].append({

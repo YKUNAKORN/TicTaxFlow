@@ -11,9 +11,9 @@ TicTaxFlow is an AI-agent tax assistant for Thailand. v1 handles the **deduction
 
 ## Layout
 - `backend/app/agents/` — inspector (Gemini Vision OCR), tax_expert (RAG classifier + Q&A), accountant (DB writes + deduction math).
-- `backend/app/services/` — `workflow.py` (LangGraph graph), retrieval/RAG.
+- `backend/app/services/` — `workflow.py` (LangGraph graph), retrieval/RAG, `filing_pack.py`/`filing_box_map.py` (ภ.ง.ด.94/90 filing-pack preview, PHASE 3A).
 - `backend/app/api/v1/endpoints/` — auth, receipts, dashboard, transactions, tax_rules, profile, agent.
-- `backend/app/core/` — config, security. `backend/app/database/` — Supabase clients.
+- `backend/app/core/` — config, security, `tax_constants.py` (verified filing-window/threshold/penalty figures, see `backend/SOURCES.md`). `backend/app/database/` — Supabase clients.
 - `frontend/src/` — `pages/`, `components/`, `api/`, `types/`.
 
 ## Commands

@@ -10,8 +10,9 @@ do not change.
 """
 import json
 import logging
+from datetime import date
 from pathlib import Path
-from typing import Protocol
+from typing import Optional, Protocol
 
 from pydantic import BaseModel
 
@@ -35,21 +36,51 @@ class SaleRecord(BaseModel):
 class SalesProvider(Protocol):
     """Adapter interface a marketplace sales source must implement."""
 
-    def fetch_sales(self, seller_id: str, period: str) -> list[SaleRecord]:
+    def fetch_sales(
+        self, seller_id: str, period: str, date_from: Optional[str] = None, date_to: Optional[str] = None
+    ) -> list[SaleRecord]:
         ...
 
 
-def _load_fixture(path: Path, platform: str, period: str) -> list[SaleRecord]:
+def _load_fixture(
+    path: Path,
+    platform: str,
+    period: str,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+) -> list[SaleRecord]:
     """Load a platform's fixture file, filtered to `period` (a year prefix
-    like "2025" matched against each row's ISO date)."""
+    like "2025" matched against each row's ISO date).
+
+    When `date_from`/`date_to` are given (inclusive ISO YYYY-MM-DD), rows
+    are further filtered to that range -- used for half-year (ภ.ง.ด.94)
+    syncs. When both are None, behaviour is unchanged from before this
+    parameter existed.
+    """
     with open(path, encoding="utf-8") as f:
         rows = json.load(f)
 
-    return [
+    matched = [
         SaleRecord(platform=platform, **row)
         for row in rows
         if row["date"].startswith(period)
     ]
+
+    if date_from is None and date_to is None:
+        return matched
+
+    lo = date.fromisoformat(date_from) if date_from else None
+    hi = date.fromisoformat(date_to) if date_to else None
+
+    def _in_range(record: SaleRecord) -> bool:
+        record_date = date.fromisoformat(record.date)
+        if lo is not None and record_date < lo:
+            return False
+        if hi is not None and record_date > hi:
+            return False
+        return True
+
+    return [r for r in matched if _in_range(r)]
 
 
 class MockShopeeProvider:
@@ -57,10 +88,12 @@ class MockShopeeProvider:
 
     PLATFORM = "Shopee"
 
-    def fetch_sales(self, seller_id: str, period: str) -> list[SaleRecord]:
+    def fetch_sales(
+        self, seller_id: str, period: str, date_from: Optional[str] = None, date_to: Optional[str] = None
+    ) -> list[SaleRecord]:
         # seller_id is unused: the fixture is shared demo data, not scoped
         # to individual sellers.
-        return _load_fixture(FIXTURES_DIR / "shopee_sales.json", self.PLATFORM, period)
+        return _load_fixture(FIXTURES_DIR / "shopee_sales.json", self.PLATFORM, period, date_from, date_to)
 
 
 class MockLazadaProvider:
@@ -68,8 +101,10 @@ class MockLazadaProvider:
 
     PLATFORM = "Lazada"
 
-    def fetch_sales(self, seller_id: str, period: str) -> list[SaleRecord]:
-        return _load_fixture(FIXTURES_DIR / "lazada_sales.json", self.PLATFORM, period)
+    def fetch_sales(
+        self, seller_id: str, period: str, date_from: Optional[str] = None, date_to: Optional[str] = None
+    ) -> list[SaleRecord]:
+        return _load_fixture(FIXTURES_DIR / "lazada_sales.json", self.PLATFORM, period, date_from, date_to)
 
 
 class MockTikTokShopProvider:
@@ -77,12 +112,24 @@ class MockTikTokShopProvider:
 
     PLATFORM = "TikTokShop"
 
-    def fetch_sales(self, seller_id: str, period: str) -> list[SaleRecord]:
-        return _load_fixture(FIXTURES_DIR / "tiktok_sales.json", self.PLATFORM, period)
+    def fetch_sales(
+        self, seller_id: str, period: str, date_from: Optional[str] = None, date_to: Optional[str] = None
+    ) -> list[SaleRecord]:
+        return _load_fixture(FIXTURES_DIR / "tiktok_sales.json", self.PLATFORM, period, date_from, date_to)
 
 
-def aggregate_income(seller_id: str, period: str) -> dict:
+def aggregate_income(
+    seller_id: str,
+    period: str,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+) -> dict:
     """Fetch sales from every mock provider, dedupe, and total per platform.
+
+    `date_from`/`date_to` (inclusive ISO YYYY-MM-DD) narrow the year-scoped
+    `period` down to a sub-range -- e.g. Jan-Jun for a ภ.ง.ด.94 half-year
+    sync. When both are None, behaviour is unchanged from before this
+    parameter existed (full `period` year, as used by POST /income/sync).
 
     Dedup key is (platform, order_id): a marketplace occasionally re-sends
     the same order (pagination overlap), but two different marketplaces can
@@ -97,7 +144,7 @@ def aggregate_income(seller_id: str, period: str) -> dict:
 
     all_records: list[SaleRecord] = []
     for provider in providers:
-        all_records.extend(provider.fetch_sales(seller_id, period))
+        all_records.extend(provider.fetch_sales(seller_id, period, date_from, date_to))
 
     seen: set[tuple[str, str]] = set()
     deduped: list[SaleRecord] = []

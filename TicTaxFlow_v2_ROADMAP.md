@@ -121,6 +121,60 @@ START → Router
 
 ---
 
+## PHASE 3A — Filing Pack ภ.ง.ด.94/90 (shipped)
+
+Goal: turn the income/deduction estimate into a "filing pack" the user can copy into RD's own
+e-Filing site, for both the mid-year (ภ.ง.ด.94) and annual (ภ.ง.ด.90) forms.
+
+**What shipped:**
+- `app/core/tax_constants.py` — every filing-window date, threshold, and penalty figure (facts
+  #2-#6), each cited with a source URL + retrieval date (2026-09-05). `backend/SOURCES.md` is the
+  scannable table version for a judge.
+- `app/services/tax_estimator.py` — `PIT_BRACKETS` replaced with the real RD brackets
+  (rd.go.th/english/6045.html), `BRACKETS_VERIFIED = True`.
+- `app/services/taxable_income.py` — fixes the bug where the income-sync path fed
+  net-of-marketplace-fee sales straight into the PIT calculator, skipping the Section 40(8) 60%
+  flat expense deduction and all allowances entirely. Now computes taxable income from GROSS
+  income, and offers a flat-vs-actual expense-method comparison with a recordkeeping warning when
+  actual wins.
+- `app/services/income_aggregator.py` — `aggregate_income` now accepts an optional inclusive
+  `date_from`/`date_to` range, so a mid-year (Jan-Jun) sync is a real half-year query, not a
+  same-year full-12-months query.
+- `app/services/filing_pack.py` / `app/services/filing_box_map.py` — `build_filing_pack(user_id,
+  form_type, tax_year)` assembles income, expense-method comparison, deduction headroom (reuses
+  `advisor.get_category_headroom`, cap logic not reimplemented), tax due, a box-mapping table to
+  real form item numbers, a document checklist, filing deadline + days-remaining (computed, not
+  hardcoded), a disclaimer, and a verification-status flag.
+- `GET /filing/preview` and `GET /filing/forms` (`app/api/v1/endpoints/filing.py`), both
+  token-authenticated per `core/security.py`'s pattern — `user_id` is never accepted from the
+  client. Only ภ.ง.ด.94 and ภ.ง.ด.90 are supported; ภ.ง.ด.91 (salary-only) is out of scope and
+  422s.
+
+**Honest gap — box_mapping sourcing:** `data/documents/Ins94_070666.pdf` (now indexed into the RAG
+corpus) is RD's official PND94 instructions PDF, but for **tax year 2566 (2023)** — no 2568/2569
+vintage could be found via web search. Worse, its embedded Thai font has no ToUnicode CMap, so
+pdftotext/pypdf extraction of Thai item labels is unreliable for this PDF. `Ins90_241268.pdf`
+extracts cleanly, so PND90's "Section 40(8) income → item 7" row in `filing_box_map.py` is a real
+PDF-page citation (page 3, confirmed via `pdftotext -layout`). Every other PND90 row and every
+PND94 row is instead cross-referenced against 2 independent current Thai professional-accounting
+sources (itax.in.th, krungsri.com) plus the stable structural layout shared across the
+2560/2562/2565/2566/2567/2568 PIT94/PIT90 form PDFs — `filing_box_map.py`'s module docstring and
+each row's `note` field say exactly which citation type applies. Do not present these as verified
+page citations in the demo; say "cross-referenced against current filing guides" for the PND94
+rows.
+
+**Also not modelled yet:** the fixed statutory personal/spouse/child PIT allowance amounts have no
+dedicated table — `filing_pack._total_allowances()` approximates "total allowances" as the sum of
+the user's used receipt-backed deduction categories (health insurance, donations, etc.), halved
+for PND94 per fact #5. This is a reasonable stand-in given the current schema, not a verified
+per-allowance figure — see that function's docstring.
+
+**Not built:** persistence of a computed filing pack (the spec allowed skipping this since the
+pack is cheap to recompute; no `migrations/00X_filing_pack.sql` was added). ภ.ง.ด.91 is
+out-of-scope by design.
+
+---
+
 ## Demo shot list (for the recorded video)
 1. Upload a receipt → watch the agent extract Date / Amount / Tax ID / Merchant.
 2. Agent auto-classifies the category and flags it deductible.
