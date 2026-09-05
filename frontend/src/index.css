@@ -7,3 +7,42 @@
     @apply bg-background text-primary-900 antialiased;
   }
 }
+
+@media print {
+  aside,
+  header {
+    display: none !important;
+  }
+
+  button {
+    display: none !important;
+  }
+
+  body,
+  main {
+    background: #ffffff !important;
+  }
+
+  main {
+    padding: 0 !important;
+  }
+
+  main > div {
+    max-width: 100% !important;
+    padding-left: 0 !important;
+  }
+
+  div.lg\:pl-64 {
+    padding-left: 0 !important;
+  }
+
+  * {
+    color: #000000 !important;
+  }
+
+  tr,
+  .break-inside-avoid {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}

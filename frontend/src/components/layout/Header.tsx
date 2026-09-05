@@ -9,6 +9,7 @@ const PAGE_TITLES: Record<string, string> = {
     '/transactions': 'Transactions',
     '/agent': 'AI Agent',
     '/tax-rules': 'Tax Rules',
+    '/filing': 'เตรียมยื่นภาษี',
     '/profile': 'Profile',
 };
 

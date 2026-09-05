@@ -234,7 +234,7 @@ const FeaturesPage: React.FC = () => {
                             },
                             { 
                                 title: 'Instant Reports', 
-                                desc: 'Generate summary reports ready for filing directly with the Revenue Department.', 
+                                desc: 'Prepare a box-by-box filing pack you review and copy into your own e-Filing submission.',
                                 icon: FileText,
                                 color: 'text-slate-600',
                                 bg: 'bg-slate-50'
