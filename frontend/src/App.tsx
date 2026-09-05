@@ -11,6 +11,7 @@ import SignUpPage from './pages/SignUpPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import AgentPage from './pages/AgentPage';
 import ProfilePage from './pages/ProfilePage';
+import FilingPage from './pages/FilingPage';
 
 function App() {
     return (
@@ -52,6 +53,12 @@ function App() {
                 <Route path="/profile" element={
                     <Layout>
                         <ProfilePage />
+                    </Layout>
+                } />
+
+                <Route path="/filing" element={
+                    <Layout>
+                        <FilingPage />
                     </Layout>
                 } />
 

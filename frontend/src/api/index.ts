@@ -6,4 +6,5 @@ export { agentApi } from './agent';
 export { transactionsApi } from './transactions';
 export { taxRulesApi } from './taxRules';
 export { incomeApi } from './income';
+export { filingApi } from './filing';
 export { apiClient, ApiError } from './client';

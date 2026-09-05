@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { FileCheck } from 'lucide-react';
 import SummaryCards from '../components/dashboard/SummaryCards';
 import UploadZone from '../components/dashboard/UploadZone';
 import TransactionsTable from '../components/dashboard/TransactionsTable';
@@ -8,8 +10,10 @@ import IncomeByPlatformChart from '../components/dashboard/IncomeByPlatformChart
 import AdvisorSuggestionCard from '../components/dashboard/AdvisorSuggestionCard';
 import { dashboardApi } from '../api/dashboard';
 import { incomeApi } from '../api/income';
+import { filingApi } from '../api/filing';
 import { storage } from '../lib/storage';
 import type { DashboardSummary, IncomeSyncResponse, SummaryStat, Transaction } from '../types/dashboard';
+import type { FilingDeadline } from '../types/filing';
 
 const DashboardPage: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -20,11 +24,28 @@ const DashboardPage: React.FC = () => {
     const [summaryData, setSummaryData] = useState<DashboardSummary | null>(null);
     const [incomeData, setIncomeData] = useState<IncomeSyncResponse | null>(null);
     const [isIncomeLoading, setIsIncomeLoading] = useState(true);
+    const [pnd94Deadline, setPnd94Deadline] = useState<FilingDeadline | null>(null);
 
     useEffect(() => {
         fetchDashboardData();
         fetchIncomeData();
+        fetchFilingDeadline();
     }, []);
+
+    const fetchFilingDeadline = async () => {
+        const token = storage.getToken();
+        if (!token) return;
+
+        try {
+            const response = await filingApi.getForms();
+            if (response.success) {
+                const pnd94 = response.data.forms.find((f) => f.form_type === 'PND94');
+                if (pnd94) setPnd94Deadline(pnd94.deadline);
+            }
+        } catch (err) {
+            console.error('ERROR: Failed to fetch filing deadline:', err);
+        }
+    };
 
     const fetchDashboardData = async (silent = false) => {
         if (silent) {
@@ -276,6 +297,16 @@ const DashboardPage: React.FC = () => {
                     {isRefreshing ? 'Refreshing...' : 'Refresh'}
                 </button>
             </div>
+
+            {pnd94Deadline && !pnd94Deadline.is_overdue && pnd94Deadline.days_remaining <= 30 && (
+                <Link
+                    to="/filing"
+                    className="flex items-center gap-3 rounded-lg border border-accent-100 bg-accent-50 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-accent-100 transition-colors"
+                >
+                    <FileCheck size={18} className="text-accent-600 flex-shrink-0" />
+                    ภ.ง.ด.94 ครบกำหนดใน {pnd94Deadline.days_remaining} วัน → เตรียมเอกสาร
+                </Link>
+            )}
 
             <SummaryCards stats={mapToSummaryStats()} />
 
