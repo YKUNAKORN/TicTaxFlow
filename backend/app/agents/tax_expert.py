@@ -230,7 +230,9 @@ Answer:"""
         )
         return response.text
     except Exception as e:
-        logger.error("Error generating response: %s", e)
+        logger.exception("Error generating response: %s: %s", type(e).__name__, e)
+        if settings.DEBUG_ERRORS:
+            return f"[debug] {type(e).__name__}: {e}"
         return "An error occurred while generating the response."
 
 

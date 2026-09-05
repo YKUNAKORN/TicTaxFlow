@@ -64,3 +64,31 @@ def read_root():
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
+
+
+@app.get("/health/deep")
+def health_check_deep():
+    """Ping Gemini and Chroma directly. No auth — used to confirm both
+    dependencies are reachable before a demo. Never include the API key."""
+    from app.core.config import settings
+    from app.agents.tax_expert import genai_client
+    from app.services.retrieval import retrieve_context
+
+    gemini_status = {"gemini": "ok", "detail": None}
+    try:
+        genai_client.models.generate_content(
+            model=f"models/{settings.GEMINI_MODEL}",
+            contents="ping",
+        )
+    except Exception as e:
+        gemini_status = {"gemini": "error", "detail": f"{type(e).__name__}: {e}"}
+
+    rag_status = {"rag": "ok", "detail": None}
+    try:
+        chunks = retrieve_context("test")
+        if not chunks:
+            rag_status = {"rag": "empty", "detail": "no chunks returned"}
+    except Exception as e:
+        rag_status = {"rag": "error", "detail": f"{type(e).__name__}: {e}"}
+
+    return {**gemini_status, **rag_status}

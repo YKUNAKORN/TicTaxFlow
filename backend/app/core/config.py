@@ -44,6 +44,9 @@ class Settings:
     
     # AI Model Settings
     GEMINI_MODEL: str = "gemini-2.5-flash"
+
+    # Debug Settings
+    DEBUG_ERRORS: bool = os.getenv("DEBUG_ERRORS", "False").lower() in ("1", "true", "yes")
     
     def validate(self) -> None:
         """Validate required environment variables."""
