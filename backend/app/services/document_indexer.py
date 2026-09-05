@@ -4,11 +4,34 @@ import chromadb
 from pypdf import PdfReader
 
 from app.core.config import settings
+from app.services import embeddings
 
 
 chroma_client = chromadb.PersistentClient(path=str(settings.EMBEDDINGS_DIR))
 collection_name = settings.CHROMA_COLLECTION_NAME
-collection = chroma_client.get_or_create_collection(name=collection_name)
+_collection = None
+
+
+def get_collection():
+    """(Re)bind the collection to the pinned embedding function.
+
+    Drops any existing collection first: one built with a different
+    embedding function can't be reused in place - its vectors live in a
+    different vector space than this run would produce, so a plain
+    get_or_create would leave old and new vectors mixed and incomparable.
+    Re-running this script is how you re-index after changing the model.
+    """
+    global _collection
+    if _collection is None:
+        try:
+            chroma_client.delete_collection(name=collection_name)
+        except Exception:
+            pass
+        _collection = chroma_client.get_or_create_collection(
+            name=collection_name,
+            embedding_function=embeddings.get_embedding_function(),
+        )
+    return _collection
 
 
 def load_pdf_documents(directory_path=None):
@@ -100,12 +123,13 @@ def index_documents(documents, batch_size=100):
             })
     
     print(f"Created {len(all_chunks)} chunks")
-    
+
+    collection = get_collection()
     total_batches = (len(all_chunks) + batch_size - 1) // batch_size
-    
+
     for batch_idx in range(0, len(all_chunks), batch_size):
         batch = all_chunks[batch_idx:batch_idx + batch_size]
-        
+
         ids = [chunk["id"] for chunk in batch]
         texts = [chunk["text"] for chunk in batch]
         metadatas = [{"source": chunk["source"]} for chunk in batch]

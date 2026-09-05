@@ -76,8 +76,9 @@ SEED_TRANSACTIONS = [
 
 
 def ensure_rag_index() -> None:
-    if retrieval.collection.count() > 0:
-        logger.info("RAG store already populated (%d chunks)", retrieval.collection.count())
+    collection = retrieval.get_collection()
+    if collection.count() > 0:
+        logger.info("RAG store already populated (%d chunks)", collection.count())
         return
 
     logger.warning("RAG store is empty -- indexing backend/data/documents now")

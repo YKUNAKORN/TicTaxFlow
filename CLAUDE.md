@@ -41,4 +41,4 @@ Marketplace sync runs on **seeded sample data through a real adapter interface**
 ## Known gotchas
 - `google-generativeai` in requirements is unused; the code uses `google-genai`. Don't reintroduce it.
 - There were historically two Chroma stores; `data/embeddings` is the real one. `chroma_persistent_storage/` is dead.
-- Chroma uses the default embedding function (MiniLM), which is weak on Thai. If retrieval quality is poor, switch to a multilingual embedding function rather than assuming the RAG content is wrong.
+- Chroma's embedding function is pinned explicitly in `app/services/embeddings.py` (`paraphrase-multilingual-MiniLM-L12-v2`, offline-safe, cached at build time) — not Chroma's English-only default. `retrieval.py` and `document_indexer.py` both import it from there; if you ever change the model name, re-run `python -m app.services.document_indexer` to rebuild `data/embeddings`, or index and query will silently land in different vector spaces.

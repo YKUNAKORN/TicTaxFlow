@@ -5,6 +5,10 @@ python-dotenv==1.2.3
 google-genai==2.21.0
 chromadb==1.5.9
 pypdf==6.16.2
+# Explicit multilingual (incl. Thai) embedding model for Chroma - see
+# app/services/embeddings.py. Replaces Chroma's default all-MiniLM-L6-v2,
+# which lazily fetches its ONNX weights from S3 on first query.
+sentence-transformers==6.0.1
 langgraph==1.2.11
 supabase==2.31.0
 uvicorn==0.52.4

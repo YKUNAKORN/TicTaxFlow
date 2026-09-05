@@ -1,9 +1,21 @@
 import logging
+import os
 
 # Configure logging before importing app modules, so the module-level
 # workflow compilation below (and every node's per-request log line) is
 # actually visible instead of being dropped by the default WARNING root level.
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+
+# The RAG embedding model must already be cached locally by the time this
+# app serves a request (see app/services/document_indexer.py - the
+# build/deploy-time step that populates that cache and needs network).
+# Force offline here, before importing the app modules below that load
+# the embedding function, so a demo host with no route to Hugging Face
+# fails loudly on a cold cache instead of hanging or silently depending
+# on reaching it live. document_indexer.py and scripts/seed_demo.py don't
+# import this file, so their deliberate first-time downloads are unaffected.
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
 
 from contextlib import asynccontextmanager
 
