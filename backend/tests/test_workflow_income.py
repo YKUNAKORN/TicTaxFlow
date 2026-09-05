@@ -1,9 +1,12 @@
 """LangGraph income path: seller_id+period -> aggregate_income ->
-estimate_pit, so a synced income run ends with a tax estimate attached to
-state. Uses the same seeded fixtures as test_income_aggregator.py."""
+compute_taxable_income -> estimate_pit, so a synced income run ends with a
+tax estimate (on GROSS income minus the Section 40(8) flat expense
+deduction, not raw net-of-fees sales) attached to state. Uses the same
+seeded fixtures as test_income_aggregator.py."""
 from unittest.mock import patch
 
 from app.services.income_aggregator import aggregate_income
+from app.services.taxable_income import compute_taxable_income
 from app.services.tax_estimator import estimate_pit
 from app.services.workflow import compiled_graph
 
@@ -47,7 +50,13 @@ def test_income_sync_flows_through_to_tax_estimate():
     assert result["income_data"]["grand_total"]["record_count"] > 0
 
     expected_income = aggregate_income(SELLER_ID, PERIOD)
-    expected_estimate = estimate_pit(expected_income["grand_total"]["net_amount"])
+    expected_taxable = compute_taxable_income(
+        gross_income=expected_income["grand_total"]["gross_amount"],
+        expense_method="flat",
+        documented_expenses=0.0,
+        total_allowances=0.0,
+    )
+    expected_estimate = estimate_pit(expected_taxable["taxable_income"])
 
     assert result["tax_estimate"]["tax_due"] == expected_estimate["tax_due"]
     assert result["tax_estimate"]["breakdown"] == expected_estimate["breakdown"]

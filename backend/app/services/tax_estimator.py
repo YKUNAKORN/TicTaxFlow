@@ -6,28 +6,27 @@ Pure calculation only -- no I/O, no DB, no LangChain/LangGraph imports here.
 from typing import Optional
 
 # ---------------------------------------------------------------------------
-# PIT_BRACKETS -- PLACEHOLDER, NOT VERIFIED.
+# PIT_BRACKETS -- VERIFIED.
 #
-# DO NOT use these figures for any real estimate or demo. They exist only
-# so estimate_pit()'s bracket-walking arithmetic can be unit tested before
-# the real numbers are available.
-#
-# TODO(owner): replace with figures confirmed against the Revenue
-# Department (https://www.rd.go.th) for the target tax year (note: RD
-# personal income tax rates have been stable for several years, but must
-# be re-confirmed, not assumed), then flip BRACKETS_VERIFIED to True and
-# delete/update test_brackets_are_verified_before_shipping in
-# tests/test_tax_estimator.py.
+# Source: Thailand Revenue Department official English site
+# https://rd.go.th/english/6045.html (retrieved 2026-09-05). These rates
+# have been in effect since tax year 2560 (2017) and remain current for tax
+# year 2568/2569 (no bracket change since then -- corroborated by multiple
+# current 2568/2569 Thai tax-filing guides). See backend/SOURCES.md.
 #
 # Each entry: (bracket_min, bracket_max_or_None_for_unbounded, rate).
 PIT_BRACKETS: list[tuple[float, Optional[float], float]] = [
-    (0, 100_000, 0.00),
-    (100_000, 300_000, 0.05),
-    (300_000, 600_000, 0.10),
-    (600_000, None, 0.20),
+    (0, 150_000, 0.00),
+    (150_000, 300_000, 0.05),
+    (300_000, 500_000, 0.10),
+    (500_000, 750_000, 0.15),
+    (750_000, 1_000_000, 0.20),
+    (1_000_000, 2_000_000, 0.25),
+    (2_000_000, 4_000_000, 0.30),
+    (4_000_000, None, 0.35),
 ]
 
-BRACKETS_VERIFIED = False
+BRACKETS_VERIFIED = True
 
 
 def estimate_pit(taxable_income: float) -> dict:

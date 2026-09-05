@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, transactions, tax_rules, profile, receipts, dashboard, agent, income
+from app.api.v1.endpoints import auth, transactions, tax_rules, profile, receipts, dashboard, agent, income, filing
 
 api_router = APIRouter()
 
@@ -11,3 +11,4 @@ api_router.include_router(receipts.router, prefix="/receipts", tags=["Receipt Pr
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 api_router.include_router(agent.router, prefix="/agent", tags=["AI Agent"])
 api_router.include_router(income.router, prefix="/income", tags=["Income"])
+api_router.include_router(filing.router, prefix="/filing", tags=["Filing"])

@@ -40,7 +40,7 @@ def test_sync_income_returns_tax_estimate_and_suggestions(client):
         assert data["period"] == "2025"
         assert data["grand_total"]["record_count"] > 0
         assert "tax_due" in data["tax_estimate"]
-        assert data["tax_estimate"]["brackets_verified"] is False
+        assert data["tax_estimate"]["brackets_verified"] is True
         assert data["deduction_suggestions"] == []
     finally:
         app.dependency_overrides.pop(get_current_user_id, None)
