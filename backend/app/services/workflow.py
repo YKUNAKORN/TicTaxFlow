@@ -8,6 +8,8 @@ from langgraph.graph.message import add_messages
 from app.agents.inspector import extract_receipt_json, extract_receipt_from_bytes
 from app.agents.tax_expert import ask_tax_expert, ask_tax_question
 from app.agents.accountant import save_receipt_from_inspector
+from app.services.income_aggregator import aggregate_income
+from app.services.tax_estimator import estimate_pit
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +28,10 @@ class AgentState(TypedDict):
     status: str
     accountant_result: dict
     user_id: str
+    seller_id: str
+    period: str
+    income_data: dict
+    tax_estimate: dict
     messages: Annotated[list, add_messages]
 
 
@@ -34,7 +40,10 @@ class AgentState(TypedDict):
 # ---------------------------------------------------------------------------
 
 def should_inspect_receipt(state: AgentState) -> str:
-    """Decide if we need to inspect a receipt image."""
+    """Decide the entry path: income sync, receipt image, or free-text
+    question."""
+    if state.get("seller_id") and state.get("period"):
+        return "income"
     if state.get("image_path") or state.get("image_bytes"):
         return "inspect"
     return "tax_question"
@@ -202,6 +211,39 @@ def human_input_node(state: AgentState) -> AgentState:
 
 
 # ---------------------------------------------------------------------------
+# Income path: aggregate sales, then estimate PIT
+# ---------------------------------------------------------------------------
+
+def income_node(state: AgentState) -> AgentState:
+    """Aggregate multi-platform sales (seeded mock providers) for the
+    synced seller/period."""
+    logger.info("Node: Income - aggregating seller=%s period=%s", state["seller_id"], state["period"])
+
+    state["income_data"] = aggregate_income(state["seller_id"], state["period"])
+    state["messages"].append({
+        "role": "system",
+        "content": f"Income aggregated for period {state['period']}",
+    })
+
+    return state
+
+
+def estimate_tax_node(state: AgentState) -> AgentState:
+    """Estimate PIT due on the aggregated income's net total."""
+    logger.info("Node: Estimate Tax - computing PIT")
+
+    net_amount = state["income_data"]["grand_total"]["net_amount"]
+    state["tax_estimate"] = estimate_pit(net_amount)
+    state["status"] = "completed"
+    state["messages"].append({
+        "role": "system",
+        "content": f"Tax estimate: {state['tax_estimate']['tax_due']} THB due",
+    })
+
+    return state
+
+
+# ---------------------------------------------------------------------------
 # Tax Q&A node (no receipt, free-text question only)
 # ---------------------------------------------------------------------------
 
@@ -230,7 +272,8 @@ def build_workflow():
     """Build the LangGraph workflow.
 
     Flow:
-    START -> Router (has image?)
+    START -> Router (income sync? has image? else question)
+          -> Income -> Estimate Tax -> END
           -> Inspector -> Validator (data complete?)
                        -> Tax Expert (RAG) -> Accountant (DB) -> END
                        -> Human Input (if incomplete) -> END
@@ -243,15 +286,22 @@ def build_workflow():
     workflow.add_node("accountant", accountant_node)
     workflow.add_node("human_input", human_input_node)
     workflow.add_node("tax_question", tax_question_node)
+    workflow.add_node("income", income_node)
+    workflow.add_node("estimate_tax", estimate_tax_node)
 
-    # Entry point: decide receipt vs question
+    # Entry point: decide income sync vs receipt vs question
     workflow.set_conditional_entry_point(
         should_inspect_receipt,
         {
+            "income": "income",
             "inspect": "inspect",
             "tax_question": "tax_question",
         }
     )
+
+    # After Income, estimate PIT
+    workflow.add_edge("income", "estimate_tax")
+    workflow.add_edge("estimate_tax", END)
 
     # After Inspector, validate completeness
     workflow.add_conditional_edges(
@@ -280,7 +330,7 @@ def build_workflow():
 # Compiled exactly once, at module import time (i.e. application startup),
 # and reused for every request. Never call build_workflow() per request.
 compiled_graph = build_workflow()
-logger.info("LangGraph workflow compiled (nodes: inspect, tax_expert, accountant, human_input, tax_question)")
+logger.info("LangGraph workflow compiled (nodes: inspect, tax_expert, accountant, human_input, tax_question, income, estimate_tax)")
 
 
 # ---------------------------------------------------------------------------
@@ -311,6 +361,10 @@ def run_receipt_workflow(
         "status": "",
         "accountant_result": {},
         "user_id": user_id,
+        "seller_id": None,
+        "period": None,
+        "income_data": {},
+        "tax_estimate": {},
         "messages": [],
     }
     return compiled_graph.invoke(initial_state)
@@ -335,6 +389,10 @@ def run_tax_assistant(question: str, image_path: str = None, user_id: str = "dem
         "status": "",
         "accountant_result": {},
         "user_id": user_id,
+        "seller_id": None,
+        "period": None,
+        "income_data": {},
+        "tax_estimate": {},
         "messages": [{"role": "user", "content": question}],
     }
 
