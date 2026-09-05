@@ -232,10 +232,30 @@ const DashboardPage: React.FC = () => {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center h-64">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-                    <p className="text-slate-600">Loading dashboard...</p>
+            <div className="space-y-6 animate-pulse">
+                <div className="flex items-center justify-between">
+                    <div className="space-y-2">
+                        <div className="h-7 w-40 bg-slate-200 rounded-md" />
+                        <div className="h-4 w-72 bg-slate-100 rounded-md" />
+                    </div>
+                    <div className="h-10 w-28 bg-slate-200 rounded-lg" />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    {[0, 1, 2].map((i) => (
+                        <div key={i} className="h-28 bg-white border border-slate-200 rounded-xl p-5 space-y-3">
+                            <div className="h-4 w-24 bg-slate-100 rounded" />
+                            <div className="h-6 w-32 bg-slate-200 rounded" />
+                        </div>
+                    ))}
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2 space-y-8">
+                        <div className="h-64 bg-white border border-slate-200 rounded-xl" />
+                        <div className="h-48 bg-white border border-slate-200 rounded-xl" />
+                    </div>
+                    <div className="h-64 bg-white border border-slate-200 rounded-xl" />
                 </div>
             </div>
         );

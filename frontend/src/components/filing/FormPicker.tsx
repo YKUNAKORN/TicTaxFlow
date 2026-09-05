@@ -26,8 +26,8 @@ function toneFor(deadline: FilingDeadline): Tone {
 const TONE_BADGE: Record<Tone, string> = {
     calm: 'bg-slate-100 text-slate-600',
     soon: 'bg-accent-100 text-accent-600',
-    urgent: 'bg-secondary-100 text-secondary-600',
-    overdue: 'bg-secondary-700 text-white',
+    urgent: 'bg-red-100 text-red-700',
+    overdue: 'bg-red-700 text-white',
 };
 
 function formatDate(iso: string): string {
@@ -45,7 +45,7 @@ const CountdownBadge: React.FC<{ deadline: FilingDeadline }> = ({ deadline }) =>
                     : `${deadline.days_remaining} days left`}
             </span>
             {tone === 'overdue' && (
-                <p className="text-xs text-secondary-700 font-medium leading-relaxed">
+                <p className="text-xs text-red-700 font-medium leading-relaxed">
                     Past the filing deadline — penalties and surcharges may apply by law.
                 </p>
             )}

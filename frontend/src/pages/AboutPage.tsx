@@ -43,7 +43,7 @@ const AboutPage: React.FC = () => {
                 {/* Values Section */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-32 border-y border-slate-100 py-20">
                     <div className="text-center space-y-6 px-4">
-                        <div className="h-20 w-20 bg-primary-50 rounded-3xl flex items-center justify-center mx-auto text-primary-600 shadow-sm rotate-3 hover:rotate-6 transition-transform">
+                        <div className="h-20 w-20 bg-primary-50 rounded-2xl flex items-center justify-center mx-auto text-primary-600 shadow-sm">
                             <Target size={40} />
                         </div>
                         <div>
@@ -54,7 +54,7 @@ const AboutPage: React.FC = () => {
                         </div>
                     </div>
                     <div className="text-center space-y-6 px-4 border-x border-slate-100">
-                        <div className="h-20 w-20 bg-secondary-50 rounded-3xl flex items-center justify-center mx-auto text-secondary-600 shadow-sm -rotate-3 hover:-rotate-6 transition-transform">
+                        <div className="h-20 w-20 bg-secondary-50 rounded-2xl flex items-center justify-center mx-auto text-secondary-600 shadow-sm">
                             <Users size={40} />
                         </div>
                         <div>
@@ -65,7 +65,7 @@ const AboutPage: React.FC = () => {
                         </div>
                     </div>
                     <div className="text-center space-y-6 px-4">
-                        <div className="h-20 w-20 bg-accent-50 rounded-3xl flex items-center justify-center mx-auto text-accent-600 shadow-sm rotate-3 hover:rotate-6 transition-transform">
+                        <div className="h-20 w-20 bg-accent-50 rounded-2xl flex items-center justify-center mx-auto text-accent-600 shadow-sm">
                             <Award size={40} />
                         </div>
                         <div>

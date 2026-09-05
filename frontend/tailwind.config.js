@@ -11,32 +11,36 @@ export default {
       },
       colors: {
         primary: {
-          DEFAULT: '#7B3FFF', // Purple
-          50: '#F5F3FF',
-          100: '#EDE9FE',
-          200: '#DDD6FE',
-          300: '#C4B5FD',
-          400: '#A78BFA',
-          500: '#8B5CF6',
-          600: '#7B3FFF', // Main Brand
-          700: '#6D28D9',
-          800: '#5B21B6',
-          900: '#4C1D95',
+          DEFAULT: '#4F46E5', // Deep indigo — muted, credible take on the original purple
+          50: '#EEF2FF',
+          100: '#E0E7FF',
+          200: '#C7D2FE',
+          300: '#A5B4FC',
+          400: '#818CF8',
+          500: '#6366F1',
+          600: '#4F46E5', // Main Brand
+          700: '#4338CA',
+          800: '#3730A3',
+          900: '#312E81',
         },
         secondary: {
-          DEFAULT: '#FF46A4', // Pink
-          50: '#FDF2F8',
-          100: '#FCE7F3',
-          500: '#EC4899',
-          600: '#FF46A4', // Main Brand
-          700: '#BE185D',
+          DEFAULT: '#0D9488', // Muted teal — replaces bright pink for a calmer, professional accent
+          50: '#F0FDFA',
+          100: '#CCFBF1',
+          200: '#99F6E4',
+          400: '#2DD4BF',
+          500: '#14B8A6',
+          600: '#0D9488', // Main Brand
+          700: '#0F766E',
         },
         accent: {
-          DEFAULT: '#FDC830', // Yellow
+          DEFAULT: '#D97706', // Muted amber — reserved for deadlines/warnings, not brand-wide
           50: '#FFFBEB',
           100: '#FEF3C7',
+          400: '#FBBF24',
           500: '#F59E0B',
-          600: '#FDC830', // Main Brand
+          600: '#D97706', // Main Brand
+          700: '#B45309',
         },
         slate: {
           50: '#F8FAFC',
@@ -55,15 +59,6 @@ export default {
           DEFAULT: '#F8FAFC', // Slate 50
           paper: '#FFFFFF',
         }
-      },
-      keyframes: {
-        shine: {
-          '0%': { backgroundPosition: '200% center' },
-          '100%': { backgroundPosition: '-200% center' },
-        },
-      },
-      animation: {
-        shine: 'shine 4s linear infinite',
       },
     },
   },

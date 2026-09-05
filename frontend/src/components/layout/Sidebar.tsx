@@ -46,7 +46,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             {/* Mobile Overlay */}
             {isOpen && (
                 <div
-                    className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-20 lg:hidden"
+                    className="fixed inset-0 bg-slate-900/30 z-20 lg:hidden"
                     onClick={onClose}
                 />
             )}
@@ -54,7 +54,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             {/* Sidebar Container */}
             <aside
                 className={clsx(
-                    "fixed top-0 left-0 z-30 h-screen w-64 bg-white border-r border-slate-200 transition-transform duration-300 ease-in-out lg:translate-x-0 shadow-sm",
+                    "fixed top-0 left-0 z-30 h-screen w-64 bg-white border-r border-slate-200 will-change-transform transition-transform duration-200 ease-out lg:translate-x-0 lg:transition-none shadow-sm",
                     isOpen ? "translate-x-0" : "-translate-x-full"
                 )}
             >

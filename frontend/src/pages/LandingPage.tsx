@@ -36,7 +36,7 @@ const LandingPage: React.FC = () => {
                 <div className="text-center max-w-3xl mx-auto space-y-8 animate-fade-in-up">
                     <h1 className="text-5xl lg:text-7xl font-bold text-slate-900 tracking-tight leading-[1.1]">
                         Tax Deductions, <br />
-                        <span className="bg-[linear-gradient(to_right,#7B3FFF,#FF46A4,#FDC830,#7B3FFF)] bg-[length:200%_auto] animate-shine bg-clip-text text-transparent">Simplified by AI.</span>
+                        <span className="text-primary-700">Simplified by AI.</span>
                     </h1>
 
                     <p className="text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed">
