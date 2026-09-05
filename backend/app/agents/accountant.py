@@ -41,6 +41,12 @@ def get_active_tax_rules(tax_year: int = None) -> list:
     omitted). Used by the deduction advisor to enumerate categories --
     the cap math itself stays in calculate_deductible_amount /
     get_used_deductible_amount below, not duplicated here.
+
+    Falls back to every active rule regardless of year when nothing
+    matches `tax_year` exactly -- same fallback as get_tax_rule_by_category,
+    needed because DEFAULT_TAX_YEAR tracks the current calendar year while
+    the seeded tax_rules rows are pinned to whichever year they were last
+    entered for.
     """
     if tax_year is None:
         tax_year = settings.DEFAULT_TAX_YEAR
@@ -50,6 +56,11 @@ def get_active_tax_rules(tax_year: int = None) -> list:
             "tax_year", tax_year
         ).eq("is_active", True).execute()
 
+        if response.data:
+            return response.data
+
+        logger.warning("No tax rules found for tax_year=%s, using all active rules regardless of year", tax_year)
+        response = supabase.table("tax_rules").select("*").eq("is_active", True).execute()
         return response.data or []
     except Exception as e:
         logger.error("Error fetching active tax rules: %s", e)
