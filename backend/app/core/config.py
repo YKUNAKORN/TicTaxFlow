@@ -17,7 +17,16 @@ class Settings:
     API_VERSION: str = "1.0.0"
     
     # CORS Settings
-    CORS_ORIGINS: list = ["http://localhost:5173", "http://localhost:3000"]
+    # Comma-separated list of allowed origins. Defaults to the local dev
+    # frontends (Vite on 5173, docker frontend on 3000). Set CORS_ORIGINS
+    # in .env to your deployed frontend origin(s) for any non-local host.
+    CORS_ORIGINS: list = [
+        origin.strip()
+        for origin in os.getenv(
+            "CORS_ORIGINS", "http://localhost:5173,http://localhost:3000"
+        ).split(",")
+        if origin.strip()
+    ]
     
     # API Keys
     GEMINI_API_KEY: Optional[str] = os.getenv("GEMINI_API_KEY")

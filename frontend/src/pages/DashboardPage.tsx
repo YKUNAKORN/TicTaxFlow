@@ -8,6 +8,7 @@ import TransactionModal from '../components/Features/TransactionModal';
 import FinancialOverviewChart from '../components/dashboard/FinancialOverviewChart';
 import IncomeByPlatformChart from '../components/dashboard/IncomeByPlatformChart';
 import AdvisorSuggestionCard from '../components/dashboard/AdvisorSuggestionCard';
+import { API_ORIGIN } from '../api/client';
 import { dashboardApi } from '../api/dashboard';
 import { incomeApi } from '../api/income';
 import { filingApi } from '../api/filing';
@@ -185,8 +186,6 @@ const DashboardPage: React.FC = () => {
     const mapToTransactions = (): Transaction[] => {
         if (!summaryData) return [];
 
-        const API_BASE_URL = 'http://localhost:8000';
-
         return summaryData.recent_transactions.map((tx) => ({
             id: tx.id,
             date: tx.transaction_date,
@@ -194,7 +193,7 @@ const DashboardPage: React.FC = () => {
             category: tx.category || 'Other',
             amount: tx.total_amount,
             status: mapStatus(tx.status),
-            receiptUrl: tx.receipt_image_url ? `${API_BASE_URL}${tx.receipt_image_url}` : '',
+            receiptUrl: tx.receipt_image_url ? `${API_ORIGIN}${tx.receipt_image_url}` : '',
             aiReasoning: tx.ai_reasoning || '',
         }));
     };

@@ -100,6 +100,59 @@ TicTaxFlow - AI Agent for Tax Deduction Management System
 docker-compose up -d --build
 ```
 
+## **Deploy from scratch** (fresh clone → working login on any host)
+
+No credentials ship with this repo. Each deployment brings its own Supabase
+project and its own API keys.
+
+1. **Clone.**
+   ```bash
+   git clone <this-repo> && cd TicTaxFlow
+   ```
+
+2. **Create a Supabase project and run the schema.** Full steps (why the
+   service-role key, disabling email confirmation, seeding `tax_rules`) are in
+   [`docs/supabase-setup.md`](docs/supabase-setup.md). Short version:
+   - New project at https://supabase.com/dashboard
+   - SQL Editor → run [`supabase/schema.sql`](supabase/schema.sql)
+   - Authentication → Providers → Email → turn **Confirm email** off
+   - Seed `tax_rules` with figures from [`backend/SOURCES.md`](backend/SOURCES.md)
+
+3. **Set env vars.** Copy the template and fill it in:
+   ```bash
+   cp .env.example .env
+   ```
+   | Var | Value |
+   |---|---|
+   | `SUPABASE_URL` | Supabase → Settings → API → Project URL |
+   | `SUPABASE_KEY` | Supabase → Settings → API → **service_role** secret (not anon) |
+   | `GEMINI_API_KEY` | Google AI Studio key for `gemini-2.5-flash` |
+   | `CORS_ORIGINS` | Public origin(s) of the frontend, comma-separated. e.g. `https://tictaxflow.example.com` |
+   | `VITE_API_BASE_URL` | Public URL of the backend API **including `/api/v1`**. e.g. `https://api.tictaxflow.example.com/api/v1` |
+   | `DEBUG_ERRORS` | `False` for anything shared |
+
+   `VITE_API_BASE_URL` is baked into the frontend bundle at **build** time, so
+   it must be set before step 4. `CORS_ORIGINS` must contain the exact origin
+   the browser loads the frontend from, or the API rejects every request.
+
+4. **Build and run.**
+   ```bash
+   docker compose up -d --build
+   ```
+   Frontend on `:3000`, backend on `:8000`. Behind a reverse proxy (Coolify,
+   Traefik, nginx), point your frontend domain at the `frontend` service and
+   your API domain at `backend`, and set `CORS_ORIGINS` / `VITE_API_BASE_URL`
+   to those public URLs.
+
+5. **Verify.** Open the frontend origin, register a user, log in. If login
+   fails: check `CORS_ORIGINS` matches the browser origin, confirm email
+   confirmation is off in Supabase, and check `docker compose logs backend`.
+
+6. **(Optional) seed a demo user** — see [`DEMO.md`](DEMO.md):
+   ```bash
+   cd backend && python scripts/seed_demo.py
+   ```
+
 ## **Rebuilding the RAG knowledge base**
 
 The Chroma vector store (`backend/data/embeddings/`) is not committed to git —

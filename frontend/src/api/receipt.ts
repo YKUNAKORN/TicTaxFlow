@@ -1,7 +1,6 @@
 import { UploadReceiptRequest, UploadReceiptResponse } from '../types/receipt';
 import { storage } from '../lib/storage';
-
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+import { API_BASE_URL } from './client';
 
 export const receiptApi = {
   uploadReceipt: async (request: UploadReceiptRequest): Promise<UploadReceiptResponse> => {

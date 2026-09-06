@@ -3,13 +3,31 @@ services:
     build: ./backend
     ports:
       - "8000:8000"
+    # Credentials + config come from the repo-root .env (copy .env.example).
+    # env_file is read at `docker compose up` time on the host; nothing
+    # secret is baked into the image.
+    env_file:
+      - .env
     environment:
       - PYTHONUNBUFFERED=1
+      # Explicit passthrough so `docker compose config` shows what the
+      # backend needs even when .env is absent. Values still come from .env.
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173,http://localhost:3000}
+      - DEBUG_ERRORS=${DEBUG_ERRORS:-False}
     volumes:
       - ./backend:/app
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      args:
+        # Vite inlines env vars at BUILD time, so the API base URL must be
+        # passed as a build arg, not a runtime env var. Defaults to the
+        # localhost dev backend; override in .env for a non-local host.
+        - VITE_API_BASE_URL=${VITE_API_BASE_URL:-http://localhost:8000/api/v1}
     ports:
       - "3000:80"
     depends_on:

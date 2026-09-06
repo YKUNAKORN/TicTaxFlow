@@ -1,6 +1,14 @@
 import { storage } from '../lib/storage';
 
-const API_BASE_URL = 'http://localhost:8000/api/v1';
+// Base URL for the API. Set VITE_API_BASE_URL at build time for any
+// non-localhost deployment (see .env.example / Dockerfile build arg).
+// The localhost value is only a dev fallback for `npm run dev`.
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+
+// Same host without the `/api/v1` suffix — used for static files the
+// backend serves outside the API prefix (e.g. /receipts/<file>).
+export const API_ORIGIN = API_BASE_URL.replace(/\/api\/v1\/?$/, '');
 
 export class ApiError extends Error {
   constructor(
