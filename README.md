@@ -120,7 +120,7 @@ project and its own API keys.
 
 3. **Set env vars.** Copy the template and fill it in:
    ```bash
-   cp .env.example .env
+   cp backend/.env.example backend/.env
    ```
    | Var | Value |
    |---|---|
@@ -131,13 +131,17 @@ project and its own API keys.
    | `VITE_API_BASE_URL` | Public URL of the backend API **including `/api/v1`**. e.g. `https://api.tictaxflow.example.com/api/v1` |
    | `DEBUG_ERRORS` | `False` for anything shared |
 
-   `VITE_API_BASE_URL` is baked into the frontend bundle at **build** time, so
-   it must be set before step 4. `CORS_ORIGINS` must contain the exact origin
-   the browser loads the frontend from, or the API rejects every request.
+   `CORS_ORIGINS` must contain the exact origin the browser loads the frontend
+   from, or the API rejects every request.
 
 4. **Build and run.**
    ```bash
+   # local / localhost frontend:
    docker compose up -d --build
+
+   # non-local host (makes compose read VITE_API_BASE_URL from backend/.env,
+   # which Vite bakes into the frontend bundle at build time):
+   docker compose --env-file backend/.env up -d --build
    ```
    Frontend on `:3000`, backend on `:8000`. Behind a reverse proxy (Coolify,
    Traefik, nginx), point your frontend domain at the `frontend` service and
