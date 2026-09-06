@@ -11,7 +11,7 @@ from app.services.tax_estimator import estimate_pit
 from app.services.workflow import compiled_graph
 
 SELLER_ID = "seller-1"
-PERIOD = "2025"
+PERIOD = "2026"
 
 
 def _base_state(**overrides):

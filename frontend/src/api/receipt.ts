@@ -23,6 +23,16 @@ export const receiptApi = {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ detail: 'Upload failed' }));
+
+      // Same expired/invalid-token handling as api/client.ts (this call uses
+      // its own fetch for multipart upload, so it can't share that path).
+      if (response.status === 401) {
+        storage.clearTokens();
+        if (typeof window !== 'undefined' && window.location.pathname !== '/signin') {
+          window.location.assign('/signin');
+        }
+      }
+
       throw new Error(errorData.detail || `Upload failed with status ${response.status}`);
     }
 

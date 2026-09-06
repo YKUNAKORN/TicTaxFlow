@@ -27,10 +27,10 @@ create table if not exists public.users (
     id         uuid primary key references auth.users (id) on delete cascade,
     username   text,
     email      text,
-    -- App always writes a value here (bcrypt hash from register, or the string
-    -- 'managed-by-supabase-auth' from seed_demo) but never reads it back.
-    -- Supabase Auth is the real credential store.
-    -- TODO(owner): confirm whether this column should exist at all / be NOT NULL.
+    -- Vestigial. Supabase Auth is the real (and only) credential store; the
+    -- app no longer writes or reads this column (register + seed_demo both
+    -- omit it). Kept nullable so old rows don't break.
+    -- TODO(owner): drop this column once no environment still has data in it.
     password   text,
     -- TODO(owner): not read by any code path; kept for convenience. Drop if unused.
     created_at timestamptz not null default now()

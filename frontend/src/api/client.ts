@@ -50,6 +50,18 @@ async function request<T>(
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+
+    // An authenticated call that comes back 401 means the token is missing,
+    // expired, or rejected. Drop it and bounce to sign-in so the user isn't
+    // left staring at a broken page. (Login/register don't set requiresAuth,
+    // so their own 401s — bad credentials — are left for the page to show.)
+    if (response.status === 401 && requiresAuth) {
+      storage.clearTokens();
+      if (typeof window !== 'undefined' && window.location.pathname !== '/signin') {
+        window.location.assign('/signin');
+      }
+    }
+
     throw new ApiError(
       response.status,
       errorData.detail || 'An error occurred',

@@ -32,6 +32,11 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Fail fast if a required credential is missing, rather than 500ing on
+    # the first receipt upload / Supabase call. (database.py already guards
+    # SUPABASE_*; this also covers GEMINI_API_KEY.)
+    settings.validate()
+
     # `compiled_graph` was already compiled once at import time (module-level
     # singleton in app/services/workflow.py). Referencing it here just makes
     # that startup-time compilation explicit and confirms it's ready before

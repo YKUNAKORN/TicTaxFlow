@@ -100,3 +100,22 @@ def test_forms_lists_pnd94_and_pnd90_only(client):
         assert forms == {"PND94", "PND90"}
     finally:
         app.dependency_overrides.pop(get_current_user_id, None)
+
+
+def test_forms_without_tax_year_resolves_to_a_year_the_sample_data_covers(client):
+    """The frontend calls /filing/forms with no tax_year, then feeds the
+    returned tax_year straight into /filing/preview. That value must be a
+    year the seeded fixtures actually have rows for, otherwise the pack is
+    all zeros (regression: DEFAULT_TAX_YEAR advanced past the fixtures)."""
+    from app.services.income_aggregator import aggregate_income
+
+    app.dependency_overrides[get_current_user_id] = lambda: USER_A
+    try:
+        response = client.get("/api/v1/filing/forms")
+
+        assert response.status_code == 200
+        resolved_year = response.json()["data"]["tax_year"]
+        assert isinstance(resolved_year, int)
+        assert aggregate_income("", str(resolved_year))["grand_total"]["record_count"] > 0
+    finally:
+        app.dependency_overrides.pop(get_current_user_id, None)

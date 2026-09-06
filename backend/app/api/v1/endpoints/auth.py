@@ -2,7 +2,6 @@ import logging
 
 from fastapi import APIRouter, HTTPException, status, Header
 from typing import Optional
-import bcrypt
 
 from app.schemas.user import UserRegister, RegisterResponse, UserResponse, UserLogin, LoginResponse, ChangePassword
 from app.database.database import supabase, get_auth_client
@@ -10,13 +9,6 @@ from app.database.database import supabase, get_auth_client
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-def hash_password(password: str) -> str:
-    """Hash password using bcrypt (for public.users backup)."""
-    salt = bcrypt.gensalt()
-    hashed = bcrypt.hashpw(password.encode('utf-8'), salt)
-    return hashed.decode('utf-8')
 
 
 # Register endpoint using Supabase Auth
@@ -50,17 +42,15 @@ async def register(user_data: UserRegister):
                 detail="Registration failed"
             )
         
-        # Insert user data into public.users table
+        # Mirror the user into public.users (app reads `username` from here).
+        # Credentials live ONLY in Supabase Auth -- the `password` column is
+        # vestigial (schema.sql flags it TODO) and is intentionally NOT
+        # written here.
         try:
-            # Hash password for backup storage (NOT RECOMMENDED in production)
-            # Supabase Auth already manages password securely
-            hashed_password = hash_password(user_data.password)
-            
-            user_insert = supabase.table("users").insert({
+            supabase.table("users").insert({
                 "id": response.user.id,
                 "username": user_data.full_name,
                 "email": response.user.email,
-                "password": hashed_password
             }).execute()
         except Exception as insert_error:
             # If public.users insert fails, log but don't fail registration
@@ -79,11 +69,17 @@ async def register(user_data: UserRegister):
             message = "User registered successfully",
             user = user_response
         )
-    
-    except Exception as e:
+
+    except HTTPException:
+        raise
+    except Exception:
+        # Don't echo the raw exception back to the client -- it can carry
+        # internal detail. Log it, return a generic hint covering the common
+        # causes (email already registered, password too weak).
+        logger.exception("Registration failed")
         raise HTTPException(
             status_code = status.HTTP_400_BAD_REQUEST,
-            detail = str(e)
+            detail = "Registration failed. The email may already be registered, or the password does not meet requirements."
         )
 
 # Login endpoint using Supabase Auth

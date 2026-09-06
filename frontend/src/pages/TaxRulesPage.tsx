@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-    BookOpen, Search, Filter, Calendar, TrendingUp, AlertCircle, Info 
+import {
+    BookOpen, Search, Calendar, TrendingUp, AlertCircle, Info
 } from 'lucide-react';
 import { taxRulesApi } from '../api';
 

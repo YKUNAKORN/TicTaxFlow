@@ -8,20 +8,24 @@ module docstring. Route names stay `preview`/`forms`, never
 
 `tax_year` convention: this endpoint accepts tax_year as a Christian Era
 (CE) calendar year (e.g. 2569 is NOT accepted here -- pass 2026), matching
-app.core.config.settings.DEFAULT_TAX_YEAR (datetime.now().year, which is
-CE) and the convention already used by app.agents.accountant's tax_rules
-queries (get_active_tax_rules defaults to DEFAULT_TAX_YEAR, a CE year).
+datetime.now().year (which is CE, and what app.core.config.settings.
+DEFAULT_TAX_YEAR is set to) and the convention already used by
+app.agents.accountant's tax_rules queries (get_active_tax_rules defaults
+to DEFAULT_TAX_YEAR, a CE year). GET /filing/forms with no tax_year
+resolves it to the newest CE year the seeded sample data covers.
 CLAUDE.md flags the tax_rules.tax_year BE/CE convention as unconfirmed in
 general -- this endpoint fixes ONE convention (CE) at the API boundary and
 converts nowhere else, since app.agents.accountant already queries
 tax_rules by the same CE DEFAULT_TAX_YEAR value elsewhere in this codebase.
 """
 import logging
+from datetime import datetime
+from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
 
 from app.core.security import get_current_user_id
-from app.core.config import settings
+from app.services.income_aggregator import resolve_data_year
 from app.services.filing_pack import FormType, build_filing_pack, filing_deadline, period_range_for_form
 
 logger = logging.getLogger(__name__)
@@ -48,14 +52,28 @@ async def preview_filing_pack(
 
 @router.get("/forms", summary="List available filing forms and their deadlines")
 async def list_available_forms(
-    tax_year: int = Query(default=settings.DEFAULT_TAX_YEAR, description="Christian Era (CE) calendar year"),
+    tax_year: Optional[int] = Query(
+        default=None,
+        description="Christian Era (CE) calendar year. Omit to use the most "
+        "recent year the seeded sample data covers.",
+    ),
     user_id: str = Depends(get_current_user_id),
 ):
     """Cheap listing of supported forms + their filing windows/deadlines --
     does NOT compute a full filing pack (no income aggregation, no tax
     estimate). `user_id` is required (auth'd) even though this call doesn't
     read user data yet, so the route consistently requires a valid token.
+
+    When `tax_year` is omitted, it resolves to the newest CE year the
+    seeded fixtures actually have rows for (`resolve_data_year`), so the
+    frontend -- which feeds this value straight back into
+    GET /filing/preview -- does not request a year whose filing pack would
+    be all zeros. The response echoes the resolved `tax_year` so the client
+    knows which year it got.
     """
+    if tax_year is None:
+        tax_year = resolve_data_year(datetime.now().year)
+
     forms = []
     for form_type in FormType:
         date_from, date_to = period_range_for_form(form_type, tax_year)

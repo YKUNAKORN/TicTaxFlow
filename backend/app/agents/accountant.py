@@ -128,15 +128,28 @@ def calculate_deductible_amount(
 
     max_limit = tax_rule.get("max_limit", 0.0)
 
-    # Donations with max_limit=0 means income-based limit (use actual amount)
+    # max_limit == 0 means "income-based cap" (donations): the amount-based
+    # path below, not a fixed ceiling.
+    #
+    # KNOWN GAP (see DEMO.md "Known limits", supabase/seed_tax_rules.sql):
+    # Thai law caps total donations at 10% of net-of-deductions income (and
+    # the 2x education/sports amount counts toward that same 10%). This
+    # function has no income in scope, so it cannot enforce that ceiling --
+    # it returns the raw (or doubled) amount. Callers that know the user's
+    # income must clamp the result. Logged so it is never a silent
+    # over-statement.
     if max_limit == 0:
         category = tax_rule.get("category_name", "")
         if "Education" in category or "Sports" in category:
-            # Education/Sports donations get 2x deduction
-            deductible = total_amount * 2
+            deductible = total_amount * 2  # e-Donation education/sports: 2x
         else:
-            # General donations or other income-based: use actual amount
-            deductible = total_amount
+            deductible = total_amount  # general donation: actual amount
+        logger.warning(
+            "calculate_deductible_amount: '%s' uses the income-based path "
+            "(deductible=%.2f from amount=%.2f); the statutory 10%%-of-income "
+            "donation ceiling is NOT applied here -- clamp upstream if income is known.",
+            category or category_name, deductible, total_amount,
+        )
         return {
             "amount": deductible,
             "is_capped": False,
@@ -327,12 +340,27 @@ def update_transaction(
     """
     try:
         recalculated = False
-        if "total_amount" in updates:
-            current = supabase.table("transactions").select("user_id, rule_id").eq("id", transaction_id).execute()
+
+        # Recompute the capped deductible when EITHER the amount is edited OR
+        # the row is being promoted to "verified". The second case matters
+        # because get_used_deductible_amount only sums verified rows: several
+        # needs_review rows each computed their deductible against a
+        # verified-only total at insert time, so verifying them one by one
+        # without this re-check could push the category's cumulative total
+        # past its cap (CLAUDE.md: caps are cumulative, never per receipt).
+        amount_changed = "total_amount" in updates
+        being_verified = updates.get("status") == "verified"
+
+        if amount_changed or being_verified:
+            current = supabase.table("transactions").select(
+                "user_id, rule_id, total_amount"
+            ).eq("id", transaction_id).execute()
 
             if current.data and current.data[0].get("rule_id"):
-                rule_id = current.data[0]["rule_id"]
-                user_id = current.data[0]["user_id"]
+                row = current.data[0]
+                rule_id = row["rule_id"]
+                user_id = row["user_id"]
+                effective_amount = updates["total_amount"] if amount_changed else row.get("total_amount", 0)
                 rule = supabase.table("tax_rules").select("category_name").eq("id", rule_id).execute()
 
                 if rule.data:
@@ -344,13 +372,13 @@ def update_transaction(
                         user_id, rule_id, exclude_transaction_id=transaction_id
                     )
                     calc_result = calculate_deductible_amount(
-                        updates["total_amount"],
+                        effective_amount,
                         category_name,
                         already_used=already_used,
                     )
                     updates["deductible_amount"] = calc_result["amount"]
                     recalculated = True
-        
+
         response = supabase.table("transactions").update(updates).eq("id", transaction_id).execute()
         
         if response.data:

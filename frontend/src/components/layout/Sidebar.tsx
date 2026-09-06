@@ -1,4 +1,4 @@
-import React, { ReactNode, useState } from 'react';
+import React, { useState } from 'react';
 import { LayoutDashboard, Receipt, BookOpen, LogOut, X, Bot, User, FileCheck } from 'lucide-react';
 import { clsx } from 'clsx';
 import { NavLink, useNavigate } from 'react-router-dom';

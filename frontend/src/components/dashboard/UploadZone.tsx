@@ -1,5 +1,5 @@
 import React, { useState, useRef, DragEvent, ChangeEvent } from 'react';
-import { UploadCloud, FileUp, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { UploadCloud, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { receiptApi } from '../../api';
 import { storage } from '../../lib/storage';
 
@@ -62,9 +62,7 @@ const UploadZone: React.FC<UploadZoneProps> = ({ onUploadSuccess }) => {
         });
 
         try {
-            const response = await receiptApi.uploadReceipt({
-                file
-            });
+            await receiptApi.uploadReceipt({ file });
 
             setUploadStatus({ 
                 status: 'success', 

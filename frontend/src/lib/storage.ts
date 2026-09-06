@@ -2,7 +2,16 @@ const TOKEN_KEY = 'tictaxflow_token';
 const REFRESH_TOKEN_KEY = 'tictaxflow_refresh_token';
 const USER_ID_KEY = 'tictaxflow_user_id';
 const REMEMBERED_EMAIL_KEY = 'tictaxflow_remembered_email';
-const REMEMBERED_PASSWORD_KEY = 'tictaxflow_remembered_password';
+
+// "Remember me" persists the email only. An earlier build also stored the
+// plaintext password under this key — purge it on load so returning users
+// are not left with a credential sitting in localStorage.
+const LEGACY_REMEMBERED_PASSWORD_KEY = 'tictaxflow_remembered_password';
+try {
+  localStorage.removeItem(LEGACY_REMEMBERED_PASSWORD_KEY);
+} catch {
+  /* localStorage unavailable (private mode / disabled) — nothing to purge */
+}
 
 export const storage = {
   getToken: (): string | null => localStorage.getItem(TOKEN_KEY),
@@ -23,11 +32,7 @@ export const storage = {
   getRememberedEmail: (): string | null => localStorage.getItem(REMEMBERED_EMAIL_KEY),
   setRememberedEmail: (email: string): void => localStorage.setItem(REMEMBERED_EMAIL_KEY, email),
 
-  getRememberedPassword: (): string | null => localStorage.getItem(REMEMBERED_PASSWORD_KEY),
-  setRememberedPassword: (password: string): void => localStorage.setItem(REMEMBERED_PASSWORD_KEY, password),
-
   clearRememberedCredentials: (): void => {
     localStorage.removeItem(REMEMBERED_EMAIL_KEY);
-    localStorage.removeItem(REMEMBERED_PASSWORD_KEY);
   },
 };

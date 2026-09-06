@@ -5,8 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from datetime import datetime
 
-from app.agents.tax_expert import ask_tax_question
 from app.core.security import get_current_user_id
+from app.services.workflow import run_tax_question_workflow
 
 logger = logging.getLogger(__name__)
 
@@ -35,9 +35,12 @@ async def chat_with_agent(
     try:
         if not request.message or not request.message.strip():
             raise HTTPException(status_code=400, detail="Message cannot be empty")
-        
-        response_text = ask_tax_question(request.message)
-        
+
+        # Route through the compiled LangGraph (Router -> Tax Q&A) rather
+        # than calling the agent directly, per CLAUDE.md's orchestration rule.
+        state = run_tax_question_workflow(request.message)
+        response_text = state.get("tax_advice") or "No answer was generated."
+
         timestamp = datetime.utcnow().isoformat()
         
         return ChatResponse(

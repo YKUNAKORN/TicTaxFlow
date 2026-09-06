@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-    Search, Filter, ArrowUpRight, ArrowDownLeft, Download, RefreshCw, 
-    ChevronLeft, ChevronRight, FileText, CheckCircle, Clock, AlertCircle, MoreHorizontal 
+import {
+    Search, ArrowUpRight, ArrowDownLeft, Download, RefreshCw,
+    ChevronLeft, ChevronRight, FileText, CheckCircle, Clock, AlertCircle, MoreHorizontal
 } from 'lucide-react';
 import { transactionsApi } from '../api';
 import { storage } from '../lib/storage';
@@ -12,14 +12,6 @@ const STATUS_MAP: any = {
     needs_review: 'Needs Review',
     rejected: 'Rejected',
     processing: 'Processing',
-};
-
-// Map display labels back to backend status values
-const STATUS_FILTER_MAP: any = {
-    'All': undefined,
-    'Verified': 'verified',
-    'Processing': 'processing',
-    'Needs Review': 'needs_review',
 };
 
 const TransactionsPage: React.FC = () => {

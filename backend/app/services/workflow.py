@@ -147,7 +147,19 @@ def accountant_node(state: AgentState) -> AgentState:
 
     receipt_data = state["receipt_data"]
     tax_analysis = state.get("tax_analysis", {})
-    user_id = state.get("user_id", "demo-user-id")
+
+    # user_id is always set by the runners (from the validated bearer token
+    # for the HTTP path). Refuse to save under a missing/blank id rather than
+    # writing a row that isn't tied to a real user.
+    user_id = state.get("user_id")
+    if not user_id:
+        logger.error("Node 4: Accountant - no user_id in workflow state; not saving")
+        state["accountant_result"] = {
+            "success": False,
+            "error": "No authenticated user in workflow state",
+        }
+        state["status"] = "completed"
+        return state
 
     final_category = tax_analysis.get("category", "None")
     logger.info("Node 4: Accountant - saving with category=%s", final_category)
@@ -441,6 +453,37 @@ def run_income_workflow(user_id: str, period: str) -> AgentState:
         "user_id": user_id,
         "seller_id": user_id,
         "period": period,
+        "income_data": {},
+        "tax_estimate": {},
+        "deduction_suggestions": [],
+        "messages": [],
+    }
+    return compiled_graph.invoke(initial_state)
+
+
+def run_tax_question_workflow(question: str) -> AgentState:
+    """Run a free-text tax question through the compiled graph
+    (Router -> Tax Q&A -> END).
+
+    Used by POST /agent/chat so the conversational Q&A path also flows
+    through the LangGraph instead of calling ask_tax_question by hand, per
+    CLAUDE.md's orchestration rule. The answer is on state["tax_advice"].
+    """
+    initial_state = {
+        "question": question,
+        "image_path": None,
+        "image_bytes": None,
+        "image_url": None,
+        "receipt_data": {},
+        "tax_analysis": {},
+        "tax_advice": "",
+        "needs_human_input": False,
+        "missing_fields": [],
+        "status": "",
+        "accountant_result": {},
+        "user_id": "",
+        "seller_id": None,
+        "period": None,
         "income_data": {},
         "tax_estimate": {},
         "deduction_suggestions": [],

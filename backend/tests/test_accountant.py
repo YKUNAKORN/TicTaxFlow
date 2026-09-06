@@ -151,3 +151,52 @@ def test_update_transaction_applies_cumulative_cap_excluding_edited_row():
     # so the 50,000 edit is capped at 40,000.
     assert result["transaction"]["deductible_amount"] == 40000.0
     assert ("neq", "transactions", "id", "txn-edit") in fake.neq_calls
+
+
+def test_update_transaction_recaps_deductible_when_row_is_verified():
+    """Promoting a needs_review row to verified must re-cap its deductible
+    against the category's remaining headroom. get_used_deductible_amount
+    only sums verified rows, so several pending rows can each hold a
+    deductible computed against a smaller verified-only total -- verifying
+    them without this re-check would blow the cumulative cap."""
+    store = {
+        "transactions": [
+            {"id": "txn-pending", "user_id": "u1", "rule_id": "rule-life-insurance",
+             "status": "needs_review", "deductible_amount": 90000.0, "total_amount": 90000.0},
+            {"id": "txn-verified", "user_id": "u1", "rule_id": "rule-life-insurance",
+             "status": "verified", "deductible_amount": 60000.0, "total_amount": 60000.0},
+        ],
+        "tax_rules": [
+            {"id": "rule-life-insurance", "category_name": "Life Insurance", "max_limit": 100000.0},
+        ],
+    }
+    fake = _FakeSupabase(store)
+
+    with patch.object(accountant, "supabase", fake), \
+         patch.object(accountant, "get_tax_rule_by_category", return_value=FAKE_LIFE_INSURANCE_RULE):
+        result = accountant.update_transaction("txn-pending", {"status": "verified"})
+
+    assert result["success"] is True
+    # already_used = 60,000 (txn-verified) -> remaining headroom = 40,000, so
+    # the 90,000 row is capped down to 40,000 as it becomes verified.
+    assert result["transaction"]["deductible_amount"] == 40000.0
+    assert result["transaction"]["status"] == "verified"
+
+
+def test_update_transaction_status_change_without_rule_is_a_plain_update():
+    """A status change on a row with no rule_id (not deductible / no
+    matching category) must not blow up trying to recompute a deductible."""
+    store = {
+        "transactions": [
+            {"id": "txn-nr", "user_id": "u1", "rule_id": None,
+             "status": "needs_review", "deductible_amount": 0.0, "total_amount": 1000.0},
+        ],
+        "tax_rules": [],
+    }
+    fake = _FakeSupabase(store)
+
+    with patch.object(accountant, "supabase", fake):
+        result = accountant.update_transaction("txn-nr", {"status": "verified"})
+
+    assert result["success"] is True
+    assert result["transaction"]["deductible_amount"] == 0.0

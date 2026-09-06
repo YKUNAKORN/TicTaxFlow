@@ -1,8 +1,9 @@
 """build_filing_pack: PND94 vs PND90 income scoping, expense-method
 comparison, box mapping, and deadline/verification bookkeeping.
 
-Uses the same seeded 2025 fixtures as test_income_aggregator.py (dated
-across the whole year, so PND94's Jan-Jun scoping is actually exercised).
+Uses the same seeded fixtures as test_income_aggregator.py (dated across
+the whole current tax year, so PND94's Jan-Jun scoping is actually
+exercised).
 Deduction-category lookups are patched to an empty rule list so this test
 never hits real Supabase (see conftest.py / test_advisor.py's pattern).
 """
@@ -16,7 +17,7 @@ from app.services.filing_pack import FormType, build_filing_pack
 from app.services.income_aggregator import aggregate_income
 
 SELLER_ID = "seller-1"
-TAX_YEAR = 2025
+TAX_YEAR = 2026
 
 
 def _build(form_type, tax_year=TAX_YEAR):
@@ -70,7 +71,7 @@ def test_box_mapping_non_empty_with_notes(form_type):
 
 
 def test_deadline_days_remaining_computed_not_hardcoded():
-    pack_a = _build(FormType.PND94, tax_year=2025)
+    pack_a = _build(FormType.PND94, tax_year=2026)
     pack_b = _build(FormType.PND94, tax_year=2030)
 
     # Different tax_years must produce different deadlines/days_remaining --
@@ -78,7 +79,7 @@ def test_deadline_days_remaining_computed_not_hardcoded():
     assert pack_a["deadline"]["deadline_date"] != pack_b["deadline"]["deadline_date"]
     assert pack_a["deadline"]["days_remaining"] != pack_b["deadline"]["days_remaining"]
 
-    expected_deadline = date(2025, 9, 30)  # PND94 paper deadline: 30 Sep of tax_year
+    expected_deadline = date(2026, 9, 30)  # PND94 paper deadline: 30 Sep of tax_year
     expected_days = (expected_deadline - date.today()).days
     assert pack_a["deadline"]["days_remaining"] == expected_days
     assert pack_a["deadline"]["is_overdue"] == (expected_days < 0)

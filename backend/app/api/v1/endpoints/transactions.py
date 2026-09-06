@@ -102,12 +102,16 @@ async def get_transaction_summary(user_id: str = Depends(get_current_user_id)):
             "id, status"
         ).eq("user_id", user_id).execute()
 
-        # Calculate total deductible
-        total_deductible = sum(t.get("deductible_amount", 0) for t in verified_response.data)
+        verified_rows = verified_response.data or []
+        all_rows = all_response.data or []
+
+        # Calculate total deductible. Supabase numerics can come back as
+        # strings, so coerce before summing (same as dashboard.py).
+        total_deductible = sum(float(t.get("deductible_amount", 0) or 0) for t in verified_rows)
 
         # Count by status
         status_counts = {"verified": 0, "needs_review": 0, "rejected": 0}
-        for t in all_response.data:
+        for t in all_rows:
             status = t.get("status", "needs_review")
             if status in status_counts:
                 status_counts[status] += 1
@@ -116,7 +120,7 @@ async def get_transaction_summary(user_id: str = Depends(get_current_user_id)):
             "success": True,
             "data": {
                 "total_deductible_amount": total_deductible,
-                "total_transactions": len(all_response.data),
+                "total_transactions": len(all_rows),
                 "status_breakdown": status_counts
             }
         }

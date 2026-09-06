@@ -12,7 +12,7 @@ SELLER_ID = "seller-1"
 
 
 def test_resolve_period_uses_requested_period_verbatim():
-    assert _resolve_period(SELLER_ID, "2025") == "2025"
+    assert _resolve_period(SELLER_ID, "2026") == "2026"
 
 
 def test_resolve_period_falls_back_to_prior_year_when_current_year_empty():
@@ -31,13 +31,13 @@ def test_sync_income_returns_tax_estimate_and_suggestions(client):
              patch("app.api.v1.endpoints.income.supabase") as mock_supabase:
             mock_supabase.table.return_value.upsert.return_value.execute.return_value = None
 
-            response = client.post("/api/v1/income/sync", json={"period": "2025"})
+            response = client.post("/api/v1/income/sync", json={"period": "2026"})
 
         assert response.status_code == 200
         data = response.json()
 
         assert data["success"] is True
-        assert data["period"] == "2025"
+        assert data["period"] == "2026"
         assert data["grand_total"]["record_count"] > 0
         assert "tax_due" in data["tax_estimate"]
         assert data["tax_estimate"]["brackets_verified"] is True

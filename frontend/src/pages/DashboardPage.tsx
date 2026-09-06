@@ -155,32 +155,24 @@ const DashboardPage: React.FC = () => {
         ];
     };
 
+    const getSsfRmfCategory = () =>
+        summaryData?.category_breakdown['SSF/RMF'] ||
+        summaryData?.category_breakdown['SSF'] ||
+        summaryData?.category_breakdown['RMF'] ||
+        null;
+
     const getSsfRmfValue = (): string => {
-        if (!summaryData) return '฿ 0';
-        
-        const ssfRmfCategory = summaryData.category_breakdown['SSF/RMF'] || 
-                              summaryData.category_breakdown['SSF'] ||
-                              summaryData.category_breakdown['RMF'];
-        
-        if (ssfRmfCategory) {
-            return `฿ ${ssfRmfCategory.total_deductible.toLocaleString()}`;
-        }
-        
-        return '฿ 0';
+        const category = getSsfRmfCategory();
+        return category ? `฿ ${category.total_deductible.toLocaleString()}` : '฿ 0';
     };
 
     const getSsfRmfSubValue = (): string => {
-        if (!summaryData) return 'No limit set';
-        
-        const ssfRmfCategory = summaryData.category_breakdown['SSF/RMF'] || 
-                              summaryData.category_breakdown['SSF'] ||
-                              summaryData.category_breakdown['RMF'];
-        
-        if (ssfRmfCategory) {
-            return `Remaining of ${ssfRmfCategory.max_limit.toLocaleString()}k limit`;
+        const category = getSsfRmfCategory();
+        if (!category) return 'No data available';
+        if (category.max_limit > 0) {
+            return `฿${category.remaining.toLocaleString()} of ฿${category.max_limit.toLocaleString()} left`;
         }
-        
-        return 'No limit set';
+        return 'Income-based limit';
     };
 
     const mapToTransactions = (): Transaction[] => {
@@ -278,8 +270,8 @@ const DashboardPage: React.FC = () => {
                             <h3 className="text-sm font-medium text-red-800">Error loading dashboard</h3>
                             <p className="mt-2 text-sm text-red-700">{error}</p>
                             <div className="mt-4">
-                                <button 
-                                    onClick={fetchDashboardData}
+                                <button
+                                    onClick={() => fetchDashboardData()}
                                     className="px-4 py-2 bg-red-100 text-red-800 text-sm font-medium rounded-lg hover:bg-red-200 transition-colors"
                                 >
                                     Try again

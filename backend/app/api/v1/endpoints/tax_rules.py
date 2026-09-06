@@ -1,8 +1,15 @@
-"""Tax Rules API endpoints."""
-from fastapi import APIRouter, HTTPException
-from typing import List, Optional
+"""Tax Rules API endpoints.
+
+`tax_rules` is reference data (deduction categories + cumulative caps), not
+per-user data, so these endpoints don't scope by `user_id` -- but they still
+require a valid bearer token, so the whole API consistently rejects
+unauthenticated callers (same posture as endpoints/filing.py).
+"""
+from fastapi import APIRouter, Depends, HTTPException
+from typing import Optional
 from pydantic import BaseModel
 
+from app.core.security import get_current_user_id
 from app.database.database import supabase
 
 router = APIRouter()
@@ -20,7 +27,8 @@ class TaxRuleResponse(BaseModel):
 @router.get("/", summary="Get all tax rules")
 async def get_all_tax_rules(
     tax_year: Optional[int] = None,
-    is_active: Optional[bool] = True
+    is_active: Optional[bool] = True,
+    user_id: str = Depends(get_current_user_id),
 ):
     """
     Retrieve all tax rules
@@ -48,7 +56,7 @@ async def get_all_tax_rules(
 
 
 @router.get("/{rule_id}", summary="Get a specific tax rule by ID")
-async def get_tax_rule_by_id(rule_id: str):
+async def get_tax_rule_by_id(rule_id: str, user_id: str = Depends(get_current_user_id)):
     """
     Retrieve a single tax rule by ID
     """
@@ -69,7 +77,11 @@ async def get_tax_rule_by_id(rule_id: str):
 
 
 @router.get("/category/{category_name}", summary="Get tax rule by category name")
-async def get_tax_rule_by_category(category_name: str, tax_year: Optional[int] = 2026):
+async def get_tax_rule_by_category(
+    category_name: str,
+    tax_year: Optional[int] = 2026,
+    user_id: str = Depends(get_current_user_id),
+):
     """
     Retrieve tax rule by category name and tax year
     Default tax_year: 2026

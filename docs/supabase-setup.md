@@ -61,22 +61,22 @@ setting.
 ## 5. Seed `tax_rules`
 
 `schema.sql` creates `tax_rules` **empty**. Until it has rows, the tax-expert
-classifier maps every receipt to "no matching rule" and the dashboard shows no
-categories.
+classifier maps every receipt to "no matching rule" — each classified receipt
+is stored `needs_review` with `deductible_amount` 0, and the dashboard
+category breakdown and the deduction advisor have nothing to show.
 
-Insert one row per deduction category the classifier can output (at minimum:
-`Health Insurance`, `Life Insurance`, `SSF`; plus `RMF`, `Provident Fund`,
-`Thai ESG`, and the donation categories if your knowledge base uses them).
-Take every `max_limit` figure from [`../backend/SOURCES.md`](../backend/SOURCES.md)
-and `backend/app/core/tax_constants.py` — do not invent limits. Use the current
-calendar year (CE, e.g. `2026`) for `tax_year`.
+Run [`../supabase/seed_tax_rules.sql`](../supabase/seed_tax_rules.sql) in the
+SQL editor. It inserts the 12 demo deduction categories (Health/Life/Pension
+Insurance, SSF, RMF, Thai ESG, Home Loan Interest, Social Security, Easy
+E-Receipt, and the two income-based donation categories) for `tax_year = 2026`.
 
-```sql
-insert into public.tax_rules (category_name, max_limit, tax_year, is_active) values
-  ('Health Insurance', /* SOURCES.md */, 2026, true),
-  ('Life Insurance',   /* SOURCES.md */, 2026, true),
-  ('SSF',              /* SOURCES.md */, 2026, true);
-```
+The `max_limit` values mirror the "Base Knowledge" block in
+`backend/app/agents/tax_expert.py` so the classifier and the DB agree. They
+are **demo scaffolding** — re-verify each against the current Revenue
+Department source (https://rd.go.th) before any non-demo use, and keep this
+table as the single source of truth (do not hardcode the numbers elsewhere).
+The seed is idempotent (it replaces that year's rows); bump the year in it
+when the calendar year rolls over.
 
 ## 6. (Optional) seed the demo user
 
@@ -94,8 +94,9 @@ transactions. Safe to re-run. See [`../DEMO.md`](../DEMO.md).
 Columns are derived from code usage. `TODO(owner)` items in `schema.sql` are
 columns the code never reads back — confirm or drop them.
 
-- **users** — `id` (= `auth.users.id`), `username`, `email`, `password`
-  (write-only mirror, real credentials live in Supabase Auth), `created_at`.
+- **users** — `id` (= `auth.users.id`), `username`, `email`, `created_at`.
+  (`password` column is vestigial and no longer written — Supabase Auth is
+  the credential store.)
 - **tax_rules** — `id`, `category_name`, `max_limit`, `tax_year` (CE),
   `is_active`, `created_at`.
 - **transactions** — `id`, `user_id`, `rule_id` (nullable FK → `tax_rules`),

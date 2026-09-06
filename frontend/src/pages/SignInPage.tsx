@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Mail, Lock, ArrowRight, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 import logo from '../assets/logo-icon.png';
@@ -10,6 +10,9 @@ import AuthNavbar from '../components/layout/AuthNavbar';
 
 const SignInPage: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+    // Where RequireAuth / a 401 bounce wanted the user to be.
+    const redirectTo = (location.state as { from?: string } | null)?.from || '/dashboard';
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [rememberMe, setRememberMe] = useState(false);
@@ -19,11 +22,9 @@ const SignInPage: React.FC = () => {
 
     useEffect(() => {
         const savedEmail = storage.getRememberedEmail();
-        const savedPassword = storage.getRememberedPassword();
-        
-        if (savedEmail && savedPassword) {
+
+        if (savedEmail) {
             setEmail(savedEmail);
-            setPassword(savedPassword);
             setRememberMe(true);
         }
     }, []);
@@ -35,15 +36,14 @@ const SignInPage: React.FC = () => {
 
         try {
             await authApi.login({ email, password });
-            
+
             if (rememberMe) {
                 storage.setRememberedEmail(email);
-                storage.setRememberedPassword(password);
             } else {
                 storage.clearRememberedCredentials();
             }
-            
-            navigate('/dashboard');
+
+            navigate(redirectTo, { replace: true });
         } catch (err) {
             if (err instanceof ApiError) {
                 setError(err.message);

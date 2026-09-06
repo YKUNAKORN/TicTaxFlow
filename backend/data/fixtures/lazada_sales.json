@@ -1,107 +1,107 @@
 [
   {
-    "order_id": "LAZ-2025-2001",
-    "date": "2025-01-09",
-    "gross_amount": 3200.0,
-    "fee": 192.0,
-    "net_amount": 3008.0
+    "order_id": "LAZ-2026-2001",
+    "date": "2026-01-09",
+    "gross_amount": 38000.0,
+    "fee": 2280.0,
+    "net_amount": 35720.0
   },
   {
-    "order_id": "LAZ-2025-2002",
-    "date": "2025-01-30",
-    "gross_amount": 5102.0,
-    "fee": 306.12,
-    "net_amount": 4795.88
+    "order_id": "LAZ-2026-2002",
+    "date": "2026-01-30",
+    "gross_amount": 54000.0,
+    "fee": 3240.0,
+    "net_amount": 50760.0
   },
   {
-    "order_id": "LAZ-2025-2003",
-    "date": "2025-02-14",
-    "gross_amount": 2620.0,
-    "fee": 157.2,
-    "net_amount": 2462.8
+    "order_id": "LAZ-2026-2003",
+    "date": "2026-02-14",
+    "gross_amount": 26000.0,
+    "fee": 1560.0,
+    "net_amount": 24440.0
   },
   {
-    "order_id": "LAZ-2025-2004",
-    "date": "2025-03-02",
-    "gross_amount": 9360.0,
-    "fee": 561.6,
-    "net_amount": 8798.4
+    "order_id": "LAZ-2026-2004",
+    "date": "2026-03-02",
+    "gross_amount": 130000.0,
+    "fee": 7800.0,
+    "net_amount": 122200.0
   },
   {
-    "order_id": "LAZ-2025-2005",
-    "date": "2025-03-27",
-    "gross_amount": 1640.0,
-    "fee": 98.4,
-    "net_amount": 1541.6
+    "order_id": "LAZ-2026-2005",
+    "date": "2026-03-27",
+    "gross_amount": 17000.0,
+    "fee": 1020.0,
+    "net_amount": 15980.0
   },
   {
-    "order_id": "LAZ-2025-2006",
-    "date": "2025-04-11",
-    "gross_amount": 6480.0,
-    "fee": 388.8,
-    "net_amount": 6091.2
+    "order_id": "LAZ-2026-2006",
+    "date": "2026-04-11",
+    "gross_amount": 81000.0,
+    "fee": 4860.0,
+    "net_amount": 76140.0
   },
   {
-    "order_id": "LAZ-2025-2007",
-    "date": "2025-05-05",
-    "gross_amount": 3561.0,
-    "fee": 213.68,
-    "net_amount": 3347.32
+    "order_id": "LAZ-2026-2007",
+    "date": "2026-05-05",
+    "gross_amount": 36000.0,
+    "fee": 2160.0,
+    "net_amount": 33840.0
   },
   {
-    "order_id": "LAZ-2025-2008",
-    "date": "2025-06-01",
-    "gross_amount": 12400.0,
-    "fee": 744.0,
-    "net_amount": 11656.0
+    "order_id": "LAZ-2026-2008",
+    "date": "2026-06-01",
+    "gross_amount": 90000.0,
+    "fee": 5400.0,
+    "net_amount": 84600.0
   },
   {
-    "order_id": "LAZ-2025-2009",
-    "date": "2025-06-28",
-    "gross_amount": 2160.0,
-    "fee": 129.6,
-    "net_amount": 2030.4
+    "order_id": "LAZ-2026-2009",
+    "date": "2026-06-28",
+    "gross_amount": 49000.0,
+    "fee": 2940.0,
+    "net_amount": 46060.0
   },
   {
-    "order_id": "LAZ-2025-2010",
-    "date": "2025-07-15",
-    "gross_amount": 2883.0,
-    "fee": 173.0,
-    "net_amount": 2710.0
+    "order_id": "LAZ-2026-2010",
+    "date": "2026-07-15",
+    "gross_amount": 58000.0,
+    "fee": 3480.0,
+    "net_amount": 54520.0
   },
   {
-    "order_id": "LAZ-2025-2011",
-    "date": "2025-08-09",
-    "gross_amount": 7920.0,
-    "fee": 475.2,
-    "net_amount": 7444.8
+    "order_id": "LAZ-2026-2011",
+    "date": "2026-08-09",
+    "gross_amount": 110000.0,
+    "fee": 6600.0,
+    "net_amount": 103400.0
   },
   {
-    "order_id": "LAZ-2025-2012",
-    "date": "2025-09-14",
-    "gross_amount": 1840.0,
-    "fee": 110.4,
-    "net_amount": 1729.6
+    "order_id": "LAZ-2026-2012",
+    "date": "2026-09-14",
+    "gross_amount": 44000.0,
+    "fee": 2640.0,
+    "net_amount": 41360.0
   },
   {
-    "order_id": "LAZ-2025-2013",
-    "date": "2025-10-22",
-    "gross_amount": 4420.0,
-    "fee": 265.2,
-    "net_amount": 4154.8
+    "order_id": "LAZ-2026-2013",
+    "date": "2026-10-22",
+    "gross_amount": 42000.0,
+    "fee": 2520.0,
+    "net_amount": 39480.0
   },
   {
-    "order_id": "2025-000777",
-    "date": "2025-11-06",
-    "gross_amount": 3800.0,
-    "fee": 228.0,
-    "net_amount": 3572.0
+    "order_id": "2026-000777",
+    "date": "2026-11-06",
+    "gross_amount": 36000.0,
+    "fee": 2160.0,
+    "net_amount": 33840.0
   },
   {
-    "order_id": "LAZ-2025-2014",
-    "date": "2025-12-18",
-    "gross_amount": 2520.0,
-    "fee": 151.2,
-    "net_amount": 2368.8
+    "order_id": "LAZ-2026-2014",
+    "date": "2026-12-18",
+    "gross_amount": 39000.0,
+    "fee": 2340.0,
+    "net_amount": 36660.0
   }
 ]

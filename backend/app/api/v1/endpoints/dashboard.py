@@ -154,7 +154,9 @@ async def get_dashboard_stats(user_id: str = Depends(get_current_user_id)):
             "id"
         ).eq("user_id", user_id).execute()
         
-        total_deductible = sum(t.get("deductible_amount", 0) for t in verified_response.data or [])
+        total_deductible = sum(
+            float(t.get("deductible_amount", 0) or 0) for t in verified_response.data or []
+        )
         total_count = len(all_response.data or [])
         
         return {

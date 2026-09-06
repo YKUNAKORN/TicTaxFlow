@@ -55,7 +55,12 @@ const FilingPage: React.FC = () => {
             const response = await filingApi.getForms();
             if (response.success) {
                 setForms(response.data.forms);
+                // Triggers the [selectedForm, taxYear] effect below, which
+                // calls fetchPack and clears isLoading.
                 setTaxYear(response.data.tax_year);
+            } else {
+                setError('Failed to load filing forms');
+                setIsLoading(false);
             }
         } catch (err: any) {
             console.error('ERROR: Failed to fetch filing forms:', err);

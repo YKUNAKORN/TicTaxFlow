@@ -1,4 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import RequireAuth from './components/auth/RequireAuth';
 import Layout from './components/layout/Layout';
 import LandingPage from './pages/LandingPage';
 import FeaturesPage from './pages/FeaturesPage';
@@ -27,39 +28,51 @@ function App() {
 
                 {/* Protected App Routes (With Shell) */}
                 <Route path="/dashboard" element={
-                    <Layout>
-                        <DashboardPage />
-                    </Layout>
+                    <RequireAuth>
+                        <Layout>
+                            <DashboardPage />
+                        </Layout>
+                    </RequireAuth>
                 } />
 
                 <Route path="/transactions" element={
-                    <Layout>
-                        <TransactionsPage />
-                    </Layout>
+                    <RequireAuth>
+                        <Layout>
+                            <TransactionsPage />
+                        </Layout>
+                    </RequireAuth>
                 } />
 
                 <Route path="/tax-rules" element={
-                    <Layout>
-                        <TaxRulesPage />
-                    </Layout>
+                    <RequireAuth>
+                        <Layout>
+                            <TaxRulesPage />
+                        </Layout>
+                    </RequireAuth>
                 } />
 
                 <Route path="/agent" element={
-                    <Layout>
-                        <AgentPage />
-                    </Layout>
+                    <RequireAuth>
+                        <Layout>
+                            <AgentPage />
+                        </Layout>
+                    </RequireAuth>
                 } />
 
                 <Route path="/profile" element={
-                    <Layout>
-                        <ProfilePage />
-                    </Layout>
+                    <RequireAuth>
+                        <Layout>
+                            <ProfilePage />
+                        </Layout>
+                    </RequireAuth>
                 } />
 
                 <Route path="/filing" element={
-                    <Layout>
-                        <FilingPage />
-                    </Layout>
+                    <RequireAuth>
+                        <Layout>
+                            <FilingPage />
+                        </Layout>
+                    </RequireAuth>
                 } />
 
                 {/* Fallback */}

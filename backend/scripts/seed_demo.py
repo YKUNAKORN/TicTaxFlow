@@ -111,11 +111,13 @@ def reset_demo_user() -> str:
     logger.info("Created demo user %s (%s)", DEMO_EMAIL, user_id)
 
     try:
+        # Mirror into public.users for the app's `username` read. Credentials
+        # live only in Supabase Auth; the vestigial `password` column is not
+        # written (same as endpoints/auth.py register).
         supabase.table("users").insert({
             "id": user_id,
             "username": DEMO_FULL_NAME,
             "email": DEMO_EMAIL,
-            "password": "managed-by-supabase-auth",
         }).execute()
     except Exception:
         logger.warning("Could not mirror demo user into public.users (non-fatal)")

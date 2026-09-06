@@ -49,8 +49,10 @@ def _load_fixture(
     date_from: Optional[str] = None,
     date_to: Optional[str] = None,
 ) -> list[SaleRecord]:
-    """Load a platform's fixture file, filtered to `period` (a year prefix
-    like "2025" matched against each row's ISO date).
+    """Load a platform's fixture file, filtered to `period` (a 4-digit CE
+    year prefix, e.g. "2026", matched against each row's ISO date). The
+    seeded rows are regenerated per tax year by
+    scripts/generate_sample_fixtures.py.
 
     When `date_from`/`date_to` are given (inclusive ISO YYYY-MM-DD), rows
     are further filtered to that range -- used for half-year (ภ.ง.ด.94)
@@ -192,3 +194,24 @@ def aggregate_income(
         "grand_total": grand_total,
         "records": deduped,
     }
+
+
+def resolve_data_year(current_year: int, *, max_lookback: int = 5) -> int:
+    """Newest year at or before `current_year` (within `max_lookback`
+    years) that the seeded fixtures actually have rows for; falls back to
+    `current_year` when none in range does.
+
+    The fixtures are dated one tax year at a time
+    (scripts/generate_sample_fixtures.py) while
+    settings.DEFAULT_TAX_YEAR tracks the current calendar year, so those
+    agree only in the year the fixtures were last generated for. Callers
+    (the filing-pack default, POST /income/sync) use this so a new calendar
+    year does not silently zero out every downstream figure before the
+    fixtures are regenerated. An explicit caller-supplied year always wins
+    over this.
+    """
+    for year in range(current_year, current_year - max_lookback, -1):
+        # seller_id is unused by the mock providers (shared demo fixtures).
+        if aggregate_income("", str(year))["grand_total"]["record_count"] > 0:
+            return year
+    return current_year

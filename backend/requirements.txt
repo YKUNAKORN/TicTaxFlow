@@ -1,3 +1,5 @@
+# bcrypt is a transitive dependency of chromadb; pinned here for a
+# reproducible install (the app code no longer uses it directly).
 bcrypt==5.0.0
 fastapi==0.141.1
 numpy==2.4.6
